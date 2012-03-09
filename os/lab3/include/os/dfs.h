@@ -3,6 +3,7 @@
 
 #include "dfs_shared.h"
 
+int DfsCloseFileSystem();
 
 
 #endif

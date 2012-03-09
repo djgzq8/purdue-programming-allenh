@@ -70,7 +70,7 @@ int DfsOpenFileSystem() {
 // Read free block vector
 // Change superblock to be invalid, write back to disk, then change 
 // it back to be valid in memory
-
+	return DFS_FAIL;
 }
 
 
@@ -81,7 +81,7 @@ int DfsOpenFileSystem() {
 //-------------------------------------------------------------------
 
 int DfsCloseFileSystem() {
-
+	return DFS_FAIL;
 
 }
 
@@ -95,7 +95,7 @@ uint32 DfsAllocateBlock() {
 // Check that file system has been validly loaded into memory
 // Find the first free block using the free block vector (FBV), mark it in use
 // Return handle to block
-
+	return DFS_FAIL;
 }
 
 
@@ -104,7 +104,7 @@ uint32 DfsAllocateBlock() {
 //-----------------------------------------------------------------
 
 int DfsFreeBlock(uint32 blocknum) {
-
+	return DFS_FAIL;
 }
 
 
@@ -116,7 +116,7 @@ int DfsFreeBlock(uint32 blocknum) {
 //-----------------------------------------------------------------
 
 int DfsReadBlock(uint32 blocknum, dfs_block *b) {
-
+	return DFS_FAIL;
 
 }
 
@@ -129,7 +129,7 @@ int DfsReadBlock(uint32 blocknum, dfs_block *b) {
 //-----------------------------------------------------------------
 
 int DfsWriteBlock(uint32 blocknum, dfs_block *b){
-
+	return DFS_FAIL;
 }
 
 
@@ -144,7 +144,7 @@ int DfsWriteBlock(uint32 blocknum, dfs_block *b){
 //-----------------------------------------------------------------
 
 uint32 DfsInodeFilenameExists(char *filename) {
-
+	return DFS_FAIL;
 }
 
 
@@ -157,7 +157,7 @@ uint32 DfsInodeFilenameExists(char *filename) {
 //-----------------------------------------------------------------
 
 uint32 DfsInodeOpen(char *filename) {
-
+	return DFS_FAIL;
 }
 
 
@@ -170,7 +170,7 @@ uint32 DfsInodeOpen(char *filename) {
 //-----------------------------------------------------------------
 
 int DfsInodeDelete(uint32 handle) {
-
+	return DFS_FAIL;
 }
 
 
@@ -182,7 +182,7 @@ int DfsInodeDelete(uint32 handle) {
 //-----------------------------------------------------------------
 
 int DfsInodeReadBytes(uint32 handle, void *mem, int start_byte, int num_bytes) {
-
+	return DFS_FAIL;
 }
 
 
@@ -196,7 +196,7 @@ int DfsInodeReadBytes(uint32 handle, void *mem, int start_byte, int num_bytes) {
 //-----------------------------------------------------------------
 
 int DfsInodeWriteBytes(uint32 handle, void *mem, int start_byte, int num_bytes) {
-
+	return DFS_FAIL;
 
 }
 
@@ -208,7 +208,7 @@ int DfsInodeWriteBytes(uint32 handle, void *mem, int start_byte, int num_bytes) 
 //-----------------------------------------------------------------
 
 uint32 DfsInodeFilesize(uint32 handle) {
-
+	return DFS_FAIL;
 }
 
 
@@ -224,7 +224,7 @@ uint32 DfsInodeFilesize(uint32 handle) {
 
 uint32 DfsInodeAllocateVirtualBlock(uint32 handle, uint32 virtual_blocknum) {
 
-
+	return DFS_FAIL;
 }
 
 
@@ -236,5 +236,5 @@ uint32 DfsInodeAllocateVirtualBlock(uint32 handle, uint32 virtual_blocknum) {
 //-----------------------------------------------------------------
 
 uint32 DfsInodeTranslateVirtualToFilesys(uint32 handle, uint32 virtual_blocknum) {
-
+	return DFS_FAIL;
 }

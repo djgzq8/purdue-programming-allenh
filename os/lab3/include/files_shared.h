@@ -5,9 +5,9 @@
 #define FILE_SEEK_END 2
 #define FILE_SEEK_CUR 3
 
-//#define FILE_MAX_FILENAME_LENGTH 12
+#define FILE_MAX_FILENAME_LENGTH 12
 
-//#define FILE_MAX_READWRITE_BYTES 4096
+#define FILE_MAX_READWRITE_BYTES 4096 //this seems to be determined arbitrarily
 
 typedef struct file_descriptor {
   // STUDENT: put file descriptor info here
