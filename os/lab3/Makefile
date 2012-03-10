@@ -1,19 +1,15 @@
 all:
 	cd os; make
-#	cd makeprocs; make
-#	cd hello_world; make
-#	cd max_va; make
-#	cd recursion; make
-#	cd seg_fault; make
-#	cd multi; make
+	cd apps/fdisk; make
+	cd apps/ostests; make
+
 clean:
 	cd os; make clean
-#	cd makeprocs; make clean
-#	cd hello_world; make clean
-#	cd max_va; make clean 
-#	cd recursion; make clean
-#	cd seg_fault; make clean
-#	cd multi; make clean
+	cd apps/fdisk; make clean
+	cd apps/ostests; make clean
 
 run:
-	cd ../../bin; dlxsim -x os.dlx.obj -a -u makeprocs.dlx.obj 5; ee469_fixterminal
+	cd os; make; cd ../apps/fdisk; make; cd  ../../bin; dlxsim  -x os.dlx.obj -a -D i -u fdisk.dlx.obj #; ee469_fixterminal
+
+ostests:
+	cd os; make; cd ../apps/ostests; make; cd  ../../bin; dlxsim  -x os.dlx.obj -a -D i -u ostests.dlx.obj #; ee469_fixterminal

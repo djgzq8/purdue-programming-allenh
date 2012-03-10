@@ -1,11 +1,18 @@
 #ifndef __DFS_SHARED__
 #define __DFS_SHARED__
 
-typedef struct dfs_superblock {
-  // STUDENT: put superblock internals here
-} dfs_superblock;
+#define DFS_BLOCKSIZE 			1024  // Must be an integer multiple of the disk blocksize
+#define DFS_MAX_FILESYSTEM_SIZE 0x2000000  // 32MB
+#define DFS_INODE_MAX_NUM 		512
 
-#define DFS_BLOCKSIZE 1024  // Must be an integer multiple of the disk blocksize
+typedef struct dfs_superblock {
+	uint32 valid;
+	uint32 blocksize;
+	uint32 numblocks;
+	uint32 inodes;
+	uint32 numinodes;
+	uint32 freevector;
+} dfs_superblock;
 
 typedef struct dfs_block {
   char data[DFS_BLOCKSIZE];
@@ -24,11 +31,8 @@ typedef struct dfs_inode {
 	uint32 indirect;
 } dfs_inode;
 
-#define DFS_MAX_FILESYSTEM_SIZE 0x2000000  // 32MB
 
 #define DFS_FAIL -1
 #define DFS_SUCCESS 1
-
-
 
 #endif
