@@ -39,7 +39,7 @@ void main(int argc, char *argv[]) {
 	num_filesystem_blocks = (int)(diskblocksize / (float) DFS_BLOCKSIZE * disksize / diskblocksize);
 
 	fbv_num_fsblocks = (int)(diskblocksize / (float) DFS_BLOCKSIZE * disksize / diskblocksize / 32 * 4 /  DFS_BLOCKSIZE  );
-//	Printf("%d words %d\n", num_filesystem_blocks, fbv_num_fsblocks);
+	Printf("%d blocks %d\n", num_filesystem_blocks, fbv_num_fsblocks);
 
 	inode_num_fsblocks = (int)((float) DFS_INODE_MAX_NUM / (DFS_BLOCKSIZE / sizeof(dfs_inode)));
 
@@ -57,6 +57,8 @@ void main(int argc, char *argv[]) {
 	 sb.inodes = 1;
 	 sb.numinodes = DFS_INODE_MAX_NUM;
 	 sb.freevector = inode_num_fsblocks + sb.inodes;
+	 sb.fbv_numfsblock = fbv_num_fsblocks;
+	 sb.fbv_numwords = num_filesystem_blocks/32;
 
 	// Write all inodes as not in use and empty (all zeros)
 	 Printf("Initializing %d inodes\n", DFS_INODE_MAX_NUM);
@@ -69,7 +71,12 @@ void main(int argc, char *argv[]) {
 
 	// Next, setup free block vector (fbv) and write free block vector to the disk
 	 Printf("Initializing %d blocks used for the freeblockvector starting at FS block %d\n", fbv_num_fsblocks, sb.freevector);
-	 for (i = 0; i < DFS_BLOCKSIZE; i++){
+	 for (i = 0; i < 4; i++){
+		 fs_wdata.data[i] = 0x0;
+	 }
+	 fs_wdata.data[i++] = 0x0F;
+
+	 for (; i < DFS_BLOCKSIZE; i++){
 		 fs_wdata.data[i] = 0xFF;
 	 }
 	 for (i = 0; i < fbv_num_fsblocks; i++){

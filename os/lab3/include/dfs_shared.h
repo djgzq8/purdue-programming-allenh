@@ -12,6 +12,8 @@ typedef struct dfs_superblock {
 	uint32 inodes;
 	uint32 numinodes;
 	uint32 freevector;
+	uint32 fbv_numfsblock;
+	uint32 fbv_numwords;
 } dfs_superblock;
 
 typedef struct dfs_block {
@@ -22,7 +24,7 @@ typedef struct dfs_inode {
   // STUDENT: put inode structure internals here
   // IMPORTANT: sizeof(dfs_inode) MUST return 64 in order to fit in enough
   // inodes in the filesystem (and to make your life easier).  To do this, 
-  // adjust the maximumm length of the filename until the size of the overall inode 
+  // adjust the maximum length of the filename until the size of the overall inode
   // is 64 bytes.
 	uint32 used;
 	uint32 size;

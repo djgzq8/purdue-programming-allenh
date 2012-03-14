@@ -9,11 +9,12 @@
 
 static dfs_inode inodes[DFS_INODE_MAX_NUM]; // all inodes
 static dfs_superblock sb; // superblock
-//static uint32 fbv[/*specify size*/]; // Free block vector
+static uint32 fbv[(DISK_NUMBLOCKS / DFS_BLOCKSIZE * DISK_BLOCKSIZE/32)]; // Free block vector
 
 static uint32 negativeone = 0xFFFFFFFF;
 static inline uint32 invert(uint32 n) { return n ^ negativeone; }
 
+#define DFS_FBV_SIZE (DISK_NUMBLOCKS / DFS_BLOCKSIZE * DISK_BLOCKSIZE/32)
 // You have already been told about the most likely places where you should use locks. You may use 
 // additional locks if it is really necessary.
 
@@ -61,6 +62,11 @@ void DfsInvalidate() {
 // DfsOpenFileSystem loads the file system metadata from the disk
 // into memory.  Returns DFS_SUCCESS on success, and DFS_FAIL on 
 // failure.
+// Reads the superblock, inodes, and free block vector from disk
+// Invalidates the disk copy
+// Returns DFS_FAIL on failure
+// Returns DFS_SUCCESS on success
+// Automatically fails if the file system is already open
 //-------------------------------------------------------------------
 
 int DfsOpenFileSystem() {
@@ -97,14 +103,20 @@ int DfsOpenFileSystem() {
 	// All other blocks are sized by virtual block size:
 	// Read inodes
 	for (i = sb.inodes; i < sb.freevector; i++){
-		bcopy((char*)&fs_b, (char*)&(inodes[(i-1)*DFS_BLOCKSIZE/sizeof(dfs_inode)]), DFS_BLOCKSIZE);
 		num = DfsReadBlock (i, &fs_b);
+		bcopy((char*)&fs_b, (char*)&(inodes[(i-1)*DFS_BLOCKSIZE/sizeof(dfs_inode)]), DFS_BLOCKSIZE);
 		//reads 16 inodes at a time
 
 	}
 
-	// Read free block vector
+	// ***************Read free block vector****************
+	for (i = sb.freevector; i < sb.freevector + sb.fbv_numfsblock; i++){
+		//printf("%d\n", (i-sb.freevector)*DFS_BLOCKSIZE/sizeof(uint32));
+		DfsReadBlock(i, &fs_b);
+		bcopy((char*)&fs_b, (char*)&(fbv[(i-sb.freevector)*DFS_BLOCKSIZE/sizeof(uint32)]), DFS_BLOCKSIZE);
+	}
 
+	//printFBV();
 
 	// Change superblock to be invalid, write back to disk, then change
 	// it back to be valid in memory
@@ -125,6 +137,10 @@ int DfsOpenFileSystem() {
 // DfsCloseFileSystem writes the current memory version of the
 // filesystem metadata to the disk, and invalidates the memory's 
 // version.
+// Write the superblock, inodes, and free block vector back to disk
+// The valid superblock is written last to ensure write was successful
+// Return DFS_FAIL on failure - or file system is not open
+// Return DFS_SUCCESS on success
 //-------------------------------------------------------------------
 
 int DfsCloseFileSystem() {
@@ -166,29 +182,36 @@ int DfsCloseFileSystem() {
 //-----------------------------------------------------------------
 // DfsAllocateBlock allocates a DFS block for use. Remember to use 
 // locks where necessary.
+// Returns the block number on success
+// Returns DFS_FAIL on failure
 //-----------------------------------------------------------------
 
 uint32 DfsAllocateBlock() {
-//	int i = 0;
-//	int j = 0;
-//	int bitpos = 0;
-//
-//	for (i = 0; i < MEM_FREEMAP_SIZE; i++) {
-//		if (freeMap[i] != 0) { //not zero means there's at least 1 free page
-//			for (j = 1; j > 0; j = j << 1) {//j is a bit mask, starts as 1, 2, 4 blah blah, when the bit falls off the end it'll be zero
-//				if ((j & freeMap[i]) > 0) { //the bit in question is 1 so it's the first free page
-//					//flip the bit
-//
-//					freeMap[i] = freeMap[i] ^ j;
-//
-//					return i * 32 + bitpos;
-//				}
-//				bitpos++;
-//			}
-//		}
-//	}
-
+	int i = 0;
+	int j = 0;
+	int bitpos = 0;
 	// Check that file system has been validly loaded into memory
+	if (sb.valid == 0){
+		printf("No valid FS loaded!\n");
+		return DFS_FAIL;
+	}
+
+	for (i = 0; i < DFS_FBV_SIZE; i++) {
+		if (fbv[i] != 0) { //not zero means there's at least 1 free page
+			for (j = 1; j > 0; j = j << 1) {//j is a bit mask, starts as 1, 2, 4 blah blah, when the bit falls off the end it'll be zero
+				if ((j & fbv[i]) > 0) { //the bit in question is 1 so it's the first free page
+					//flip the bit
+
+					fbv[i] = fbv[i] ^ j;
+
+					return i * 32 + bitpos;
+				}
+				bitpos++;
+			}
+		}
+	}
+
+
 	// Find the first free block using the free block vector (FBV), mark it in use
 	// Return handle to block
 	return DFS_FAIL;
@@ -197,19 +220,26 @@ uint32 DfsAllocateBlock() {
 
 //-----------------------------------------------------------------
 // DfsFreeBlock deallocates a DFS block.
+// Free a file system block
+// Return DFS_FAIL on failure - or if the filesystem is not open
 //-----------------------------------------------------------------
 
 int DfsFreeBlock(uint32 blocknum) {
 
-//	int bitpos = blocknum % 32;
-//	int index = blocknum / 32;
-//
-//	if (blocknum > 512) {
-//		return -1;
-//	}
-//	if ((freeMap[index] & (0x1 << bitpos) ) == 0){
-//		freeMap[index] = freeMap[index] ^ (0x1 << bitpos);
-//	}
+	int bitpos = blocknum % 32;
+	int index = blocknum / 32;
+
+ //Check that the filesystem is open
+	if (sb.valid != 1){
+		printf("The file system is not open!\n");
+		return DFS_FAIL;
+	}
+	if (blocknum > 512) {
+		return -1;
+	}
+	if ((fbv[index] & (0x1 << bitpos) ) == 0){
+		fbv[index] = fbv[index] ^ (0x1 << bitpos);
+	}
 
 	//STUDENT
 
@@ -222,25 +252,34 @@ int DfsFreeBlock(uint32 blocknum) {
 // (which could span multiple physical disk blocks).  The block
 // must be allocated in order to read from it.  Returns DFS_FAIL
 // on failure, and the number of bytes read on success.
+// Fails if the file system is not open
 //-----------------------------------------------------------------
 
 int DfsReadBlock(uint32 blocknum, dfs_block *b) {
 	//	int DiskReadBlock (uint32 blocknum, disk_block *b)
 	int i,j = 0;
-		disk_block rdata;
-		int phys_blocknum = blocknum * DFS_BLOCKSIZE/DISK_BLOCKSIZE;
-		printf("********TODO: Check to see if the FS block is allocated before reading from it*****\n");
+	disk_block rdata;
+	int phys_blocknum = blocknum * DFS_BLOCKSIZE/DISK_BLOCKSIZE;
 
-		for(i = 0; i < DFS_BLOCKSIZE/DISK_BLOCKSIZE; i++){
-			//Printf("Reading physical block %d\n", phys_blocknum + i);
-			if (DiskReadBlock(phys_blocknum + i, &rdata) == DISK_FAIL){
-				return DISK_FAIL;
-			}
+	// Check that the filesystem is open
+	if (sb.valid != 1){
+		printf("The file system is not open!\n");
+		return DFS_FAIL;
+	}
 
-			for (j = 0; j < DISK_BLOCKSIZE; j++){
-				 b->data[j + i*DISK_BLOCKSIZE] = rdata.data[j];
-			}
+	printf("********TODO: Check to see if the FS block is allocated before reading from it*****\n");
+
+	for(i = 0; i < DFS_BLOCKSIZE/DISK_BLOCKSIZE; i++){
+		//printf("Reading physical block %d\n", phys_blocknum + i);
+		if (DiskReadBlock(phys_blocknum + i, &rdata) == DISK_FAIL){
+			printf("failed to read\n");
+			return DISK_FAIL;
 		}
+
+		for (j = 0; j < DISK_BLOCKSIZE; j++){
+			 b->data[j + i*DISK_BLOCKSIZE] = rdata.data[j];
+		}
+	}
 	return DFS_FAIL;
 }
 
@@ -280,7 +319,8 @@ int DfsWriteBlock(uint32 blocknum, dfs_block *b){
 
 //-----------------------------------------------------------------
 // DfsInodeFilenameExists looks through all the inuse inodes for 
-// the given filename. If the filename is found, return the handle 
+// the given filename.
+// If the filename is found, return the handle
 // of the inode. If it is not found, return DFS_FAIL.
 //-----------------------------------------------------------------
 
@@ -292,9 +332,12 @@ uint32 DfsInodeFilenameExists(char *filename) {
 
 //-----------------------------------------------------------------
 // DfsInodeOpen: search the list of all inuse inodes for the 
-// specified filename. If the filename exists, return the handle 
-// of the inode. If it does not, allocate a new inode for this 
-// filename and return its handle. Return DFS_FAIL on failure. 
+// specified filename.
+// If the filename exists, return the handle
+// of the inode.
+// If it does not, allocate a new inode for this
+// filename and return its handle.
+// Return DFS_FAIL on failure.
 // Remember to use locks whenever you allocate a new inode.
 //-----------------------------------------------------------------
 
@@ -306,9 +349,10 @@ uint32 DfsInodeOpen(char *filename) {
 
 //-----------------------------------------------------------------
 // DfsInodeDelete de-allocates any data blocks used by this inode, 
-// including the indirect addressing block if necessary, then mark 
-// the inode as no longer in use. Use locks when modifying the 
-// "inuse" flag in an inode.Return DFS_FAIL on failure, and 
+// including the indirect addressing block if necessary,
+// then mark the inode as no longer in use.
+// Use locks when modifying the "inuse" flag in an inode.
+// Return DFS_FAIL on failure, and
 // DFS_SUCCESS on success.
 //-----------------------------------------------------------------
 
@@ -392,5 +436,21 @@ void printSB(){
 	printf("number of FS blocks = %d\n", sb.numblocks);
 	printf("inodes are located at FS block = %d\n", sb.inodes);
 	printf("there are this many inodes = %d\n", sb.numinodes);
-	printf("freevector is located at FS block = %d\n\n", sb.freevector);
+	printf("freevector is located at FS block = %d\n", sb.freevector);
+	printf("freevector has %d file system blocks\n", sb.fbv_numfsblock);
+	printf("freevector is %d words long\n\n", sb.fbv_numwords);
+}
+
+void printFBV(){
+	int i = 0;
+	int j = 1;
+	printf("0:\t");
+	for (i = 0; i < (DISK_NUMBLOCKS / DFS_BLOCKSIZE * DISK_BLOCKSIZE/32); i++){
+		printf("%d ", fbv[i]);
+		if (i%4==3){
+			printf("\n%d:\t", j++);
+		}
+	}
+
+	printf("\n\n");
 }
