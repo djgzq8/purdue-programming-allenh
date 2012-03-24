@@ -12,4 +12,4 @@ run:
 	cd os; make; cd ../apps/fdisk; make; cd  ../../bin; dlxsim  -x os.dlx.obj -a -D i -u fdisk.dlx.obj #; ee469_fixterminal
 
 ostests:
-	cd os; make; cd ../apps/ostests; make; cd  ../../bin; dlxsim  -x os.dlx.obj -a -D i -u ostests.dlx.obj #; ee469_fixterminal
+	cd os; make; cd ../apps/ostests; make; cd  ../../bin; dlxsim  -x os.dlx.obj -a -D y -u ostests.dlx.obj #; ee469_fixterminal

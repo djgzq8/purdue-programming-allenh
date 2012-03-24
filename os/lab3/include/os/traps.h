@@ -99,6 +99,7 @@
 #define TRAP_FILE_WRITE         0x476
 #define TRAP_FILE_SEEK          0x477
 
+
 // Misc. Traps
 #define TRAP_TESTOS             0x4FF
 

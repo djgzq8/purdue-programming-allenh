@@ -4,11 +4,12 @@
 //---------------------------------------------------------------------
 // Typedefs needed for user-level traps
 //---------------------------------------------------------------------
+#ifndef _synch_h_
 typedef int sem_t;
 typedef int lock_t;
 typedef int cond_t;
 typedef int mbox_t;
-
+#endif
 //---------------------------------------------------------------------
 // Any #defines from operating system for return values
 //---------------------------------------------------------------------
@@ -64,6 +65,7 @@ int file_delete(char *filename);
 int file_read(unsigned int handle, void *mem, int num_bytes);
 int file_write(unsigned int handle, void *mem, int num_bytes);
 int file_seek(unsigned int handle, int num_bytes, int from_where);
+
 
 
 

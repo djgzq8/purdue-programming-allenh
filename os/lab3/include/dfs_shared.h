@@ -8,7 +8,7 @@
 typedef struct dfs_superblock {
 	uint32 valid;
 	uint32 blocksize;
-	uint32 numblocks;
+	uint32 numfsblocks;
 	uint32 inodes;
 	uint32 numinodes;
 	uint32 freevector;

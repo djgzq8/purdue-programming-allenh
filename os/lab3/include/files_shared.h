@@ -11,6 +11,12 @@
 
 typedef struct file_descriptor {
   // STUDENT: put file descriptor info here
+	char filename[FILE_MAX_FILENAME_LENGTH];
+	uint32 handle;
+	uint32 position;
+	uint32 EOF;
+	uint32 mode;//0 readonly, 1 write, 2 R/W
+	uint32 owner; //opening programs PID
 } file_descriptor;
 
 #define FILE_FAIL -1

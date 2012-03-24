@@ -18,5 +18,6 @@ uint32 FileRead(uint32, void *mem, int);
 
 uint32 FileSeek(uint32, int, int);
 
+int FileMaxFilenameLength();
 
 #endif

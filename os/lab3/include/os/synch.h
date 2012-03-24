@@ -26,9 +26,11 @@
 				//locks from the same pool
 #define MAX_CONDS	32	//Maximum 32 conds allowed in the system
 
+#ifndef __usertraps_h__
 typedef int sem_t;
 typedef int lock_t;
 typedef int cond_t;
+#endif
 
 #define INVALID_SEM -1
 #define INVALID_LOCK -1

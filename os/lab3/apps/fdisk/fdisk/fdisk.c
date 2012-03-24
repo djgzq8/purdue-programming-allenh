@@ -53,7 +53,7 @@ void main(int argc, char *argv[]) {
 	 //Setup super block in memory, it writes to disk later though
 	 sb.valid = 1;
 	 sb.blocksize = DFS_BLOCKSIZE;
-	 sb.numblocks = num_filesystem_blocks;
+	 sb.numfsblocks = num_filesystem_blocks;
 	 sb.inodes = 1;
 	 sb.numinodes = DFS_INODE_MAX_NUM;
 	 sb.freevector = inode_num_fsblocks + sb.inodes;
@@ -72,9 +72,9 @@ void main(int argc, char *argv[]) {
 	// Next, setup free block vector (fbv) and write free block vector to the disk
 	 Printf("Initializing %d blocks used for the freeblockvector starting at FS block %d\n", fbv_num_fsblocks, sb.freevector);
 	 for (i = 0; i < 4; i++){
-		 fs_wdata.data[i] = 0x0;
+		 fs_wdata.data[i] = 0x00;
 	 }
-	 fs_wdata.data[i++] = 0x0F;
+	 fs_wdata.data[i++] = 0x07;
 
 	 for (; i < DFS_BLOCKSIZE; i++){
 		 fs_wdata.data[i] = 0xFF;
@@ -103,7 +103,7 @@ int FdiskWriteBlock(uint32 blocknum, dfs_block *b) {
 	int phys_blocknum = blocknum * ratio;
 
 	for(i = 0; i < DFS_BLOCKSIZE/diskblocksize; i++){
-//		Printf("Writing physical block %d\n", phys_blocknum + i);
+		//Printf("Writing physical block %d\n", phys_blocknum + i);
 		for (j = 0; j < diskblocksize; j++){
 			wdata[j] = b->data[j + i*diskblocksize];
 		}
