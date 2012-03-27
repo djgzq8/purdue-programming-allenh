@@ -1,1 +1,25 @@
-ddf
+How many semaphores are available in DLXOS? 
+	32
+How many locks are available in DLXOS? 
+	64
+How is a semaphore created in DLXOS?
+	sem_t SemCreate(int count)
+	returns a handle to a semaphore with an internal counter initialized to
+	count
+Explain how sem_signal and sem_wait work.
+	sem_wait 
+	disables interrupts
+	it sleeps the process if the sem is going to be less than zero
+	decrements the internal semaphore counter
+	enables interrupts
+	
+	sem_signal 
+	disables interrupts
+	if the semaphore is greater than zero and
+	if there is a process in the waiting queue
+	the first process from the queue is woken up
+	enables interrupts
+What is a handle and how is it used to access 
+semaphores in DLXOS?
+	a handle is a type-defined int that is really just and index into
+	the "sems" array in synch.c

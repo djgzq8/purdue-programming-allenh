@@ -2,7 +2,7 @@
 #include "usertraps.h"
 #include "misc.h"
 
-#include "../include/spawn.h"
+#include "../include/q2.h"
 
 void main (int argc, char *argv[])
 {

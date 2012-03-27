@@ -20,7 +20,7 @@
 					<folderInfo id="cdt.managedbuild.toolchain.gnu.base.353635419.362403577" name="/" resourcePath="">
 						<toolChain id="org.eclipse.cdt.build.core.prefbase.toolchain.677800052" name="No ToolChain" superClass="org.eclipse.cdt.build.core.prefbase.toolchain">
 							<targetPlatform id="org.eclipse.cdt.build.core.prefbase.toolchain.677800052.1328407857" name=""/>
-							<builder id="org.eclipse.cdt.build.core.settings.default.builder.220138452" name="Gnu Make Builder.Default" superClass="org.eclipse.cdt.build.core.settings.default.builder"/>
+							<builder id="org.eclipse.cdt.build.core.settings.default.builder.220138452" keepEnvironmentInBuildfile="false" name="Gnu Make Builder" superClass="org.eclipse.cdt.build.core.settings.default.builder"/>
 							<tool id="org.eclipse.cdt.build.core.settings.holder.libs.1523813359" name="holder for library settings" superClass="org.eclipse.cdt.build.core.settings.holder.libs"/>
 						</toolChain>
 					</folderInfo>
