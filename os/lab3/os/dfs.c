@@ -36,6 +36,7 @@ void DfsModuleInit() {
 	// You essentially set the file system as invalid and then open
 	// using DfsOpenFileSystem().
 	DfsInvalidate();
+	FilesModuleInit();
 	dbprintf('y', "DfsModuleInit: Invalidated current file system\n");
 	if (DfsOpenFileSystem() == DFS_FAIL){
 		dbprintf('i', "Failed to open file system\n");
@@ -434,7 +435,7 @@ uint32 DfsInodeOpen(char *filename) {
 
 	//if filename already exists return the handle
 	if((handle = DfsInodeFilenameExists(filename)) != DFS_FAIL){
-		dbprintf ('y', "DfsInodeOpen: filename already exists\n");
+		dbprintf ('y', "DfsInodeOpen: filename already exists and has handle = %d\n", handle);
 		return handle;
 	}
 

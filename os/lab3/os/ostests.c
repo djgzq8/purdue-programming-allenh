@@ -5,20 +5,23 @@
 #include "dfs.h"
 
 void RunOSTests() {
-	char filename[12] = "file.c";
-	char filename2[12] = "file2.c";
-	int handle = -1;
-	int i = 0;
-	char mem[30] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	char mode = 'w';
+	FileOpen("file.c", &mode);
 
-	handle = DfsInodeOpen(filename);
-	if (handle != DFS_FAIL){
-		printf("%s successfully opened with inode number %d\n", filename, handle);
-	}
-
-	DfsInodeAllocateVirtualBlock(handle, 10);
-	DfsInodeWriteBytes(handle, (void *)mem, 10245, 25);
-	DfsInodeTranslateVirtualToFilesys(handle, 10);
+//	char filename[12] = "file.c";
+//	char filename2[12] = "file2.c";
+//	int handle = -1;
+//	int i = 0;
+//	char mem[30] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+//
+//	handle = DfsInodeOpen(filename);
+//	if (handle != DFS_FAIL){
+//		printf("%s successfully opened with inode number %d\n", filename, handle);
+//	}
+//
+//	DfsInodeAllocateVirtualBlock(handle, 10);
+//	DfsInodeWriteBytes(handle, (void *)mem, 10245, 25);
+//	DfsInodeTranslateVirtualToFilesys(handle, 10);
 
 //	DfsFreeBlock(38);
 //	DfsInodeWriteBytes(handle, (void *) mem, 1020, 26);

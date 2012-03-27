@@ -13,3 +13,6 @@ run:
 
 ostests:
 	cd os; make; cd ../apps/ostests; make; cd  ../../bin; dlxsim  -x os.dlx.obj -a -D y -u ostests.dlx.obj #; ee469_fixterminal
+	
+filesAPI:
+	cd os; make; cd ../apps/filesAPI; make; cd  ../../bin; dlxsim  -x os.dlx.obj -a -u filesAPI.dlx.obj #; ee469_fixterminal
