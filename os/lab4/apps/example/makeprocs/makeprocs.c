@@ -1,8 +1,8 @@
-#include "lab2-api.h"
+#include "lab4-api.h"
 #include "usertraps.h"
 #include "misc.h"
 
-#include "spawn.h"
+#include "../include/spawn.h"
 
 void main (int argc, char *argv[])
 {
