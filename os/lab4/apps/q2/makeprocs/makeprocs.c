@@ -8,11 +8,14 @@ void main (int argc, char *argv[])
 {
   int numprocs = 0;               // Used to store number of processes to create
   int i;                          // Loop index variable
-  missile_code *mc;               // Used to get address of shared memory page
+  buffer *circle;               // Used to get address of shared memory page
   uint32 h_mem;                   // Used to hold handle to shared memory page
   sem_t s_procs_completed;        // Semaphore used to wait until all spawned processes have completed
   char h_mem_str[10];             // Used as command-line argument to pass mem_handle to new processes
   char s_procs_completed_str[10]; // Used as command-line argument to pass page_mapped handle to new processes
+  char s_p_type[2];
+  char s_c_type[2];
+
 
   if (argc != 2) {
     Printf("Usage: "); Printf(argv[0]); Printf(" <number of processes to create>\n");
@@ -32,14 +35,22 @@ void main (int argc, char *argv[])
   }
 
   // Map shared memory page into this process's memory space
-  if ((mc = (missile_code *)shmat(h_mem)) == NULL) {
-    Printf("Could not map the shared page to virtual address in "); Printf(argv[0]); Printf(", exiting..\n");
+  if ((circle = (buffer *)shmat(h_mem)) == NULL) {
+    Printf("Could not map the shared page to virtual address in ");
+    Printf(argv[0]);
+    Printf(", exiting..\n");
     Exit();
   }
 
   // Put some values in the shared memory, to be read by other processes
-  mc->numprocs = numprocs;
-  mc->really_important_char = 'A';
+  circle->head = 0;
+  circle->tail = 0;
+  circle->l = lock_create();
+  circle->fillCount = sem_create(0);
+  circle->emptyCount = sem_create(BUFFER_SIZE);
+  Printf("return of first lock_acquire = %d\n", lock_acquire(circle->l));
+  Printf("Lock handle is %d\n", circle->l);
+
 
   // Create semaphore to not exit this process until all other processes 
   // have signalled that they are complete.  To do this, we will initialize
@@ -47,8 +58,9 @@ void main (int argc, char *argv[])
   // should be equal to the number of processes we're spawning - 1.  Once 
   // each of the processes has signaled, the semaphore should be back to
   // zero and the final sem_wait below will return.
-  if ((s_procs_completed = sem_create(-(numprocs-1))) == SYNC_FAIL) {
-    Printf("Bad sem_create in "); Printf(argv[0]); Printf("\n");
+  if ((s_procs_completed = sem_create(-(numprocs*2-1))) == SYNC_FAIL) {
+    Printf("Bad sem_create in ");
+    Printf(argv[0]); Printf("\n");
     Exit();
   }
 
@@ -58,13 +70,19 @@ void main (int argc, char *argv[])
   ditoa(h_mem, h_mem_str);
   ditoa(s_procs_completed, s_procs_completed_str);
 
+  ditoa('p', s_p_type);
+  ditoa('c', s_c_type);
+
   // Now we can create the processes.  Note that you MUST end your call to
   // process_create with a NULL argument so that the operating system
   // knows how many arguments you are sending.
   for(i=0; i<numprocs; i++) {
-    process_create(FILENAME_TO_RUN, h_mem_str, s_procs_completed_str, NULL);
-    Printf("Process %d created\n", i);
+    process_create(FILENAME_TO_RUN, h_mem_str, s_procs_completed_str, s_p_type, NULL);
+    Printf("Producer %d created\n", i);
+    process_create(FILENAME_TO_RUN, h_mem_str, s_procs_completed_str, s_c_type, NULL);
+    Printf("Consumer %d created\n", i);
   }
+  lock_release(circle->l);
 
   // And finally, wait until all spawned processes have finished.
   if (sem_wait(s_procs_completed) != SYNC_SUCCESS) {
