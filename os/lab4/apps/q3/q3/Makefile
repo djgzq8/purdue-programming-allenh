@@ -6,8 +6,8 @@
 # this way because the build procedure for all apps is basically the same.
 
 
-SRCS=spawn_me.c
-EXEC=spawn_me.dlx.obj
+SRCS=q3.c
+EXEC=q3.dlx.obj
 
 include ../Makerules
 

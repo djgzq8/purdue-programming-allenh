@@ -2,25 +2,25 @@
 #include "usertraps.h"
 #include "misc.h"
 
-#include "../include/spawn.h"
+#include "../include/q3.h"
 
 void main (int argc, char *argv[])
 {
-  int numprocs = 0;               // Used to store number of processes to create
+  int numprocs = 5;               // Used to store number of processes to create
   int i;                          // Loop index variable
-  missile_code *mc;               // Used to get address of shared memory page
+  phil *p;               // Used to get address of shared memory page
   uint32 h_mem;                   // Used to hold handle to shared memory page
   sem_t s_procs_completed;        // Semaphore used to wait until all spawned processes have completed
   char h_mem_str[10];             // Used as command-line argument to pass mem_handle to new processes
   char s_procs_completed_str[10]; // Used as command-line argument to pass page_mapped handle to new processes
-
-  if (argc != 2) {
-    Printf("Usage: "); Printf(argv[0]); Printf(" <number of processes to create>\n");
+  char i_str[2];
+  if (argc != 1) {
+    Printf("Usage: ");
+    Printf(argv[0]);
+    Printf("\n");
     Exit();
   }
 
-  // Convert string from ascii command line argument to integer number
-  numprocs = dstrtol(argv[1], NULL, 10); // the "10" means base 10
   Printf("Creating %d processes\n", numprocs);
 
   // Allocate space for a shared memory page, which is exactly 64KB
@@ -32,14 +32,18 @@ void main (int argc, char *argv[])
   }
 
   // Map shared memory page into this process's memory space
-  if ((mc = (missile_code *)shmat(h_mem)) == NULL) {
+  if ((p = (phil *)shmat(h_mem)) == NULL) {
     Printf("Could not map the shared page to virtual address in "); Printf(argv[0]); Printf(", exiting..\n");
     Exit();
   }
 
   // Put some values in the shared memory, to be read by other processes
-  mc->numprocs = numprocs;
-  mc->really_important_char = 'A';
+  for (i = 0; i < 5; i++){
+	  p->free[i] = 1;
+	  p->chopsticks[i] = lock_create();
+	  p->wait_locks[i] = lock_create();
+	  p->wait[i] = cond_create(p->wait_locks[i]);
+  }
 
   // Create semaphore to not exit this process until all other processes 
   // have signalled that they are complete.  To do this, we will initialize
@@ -62,7 +66,8 @@ void main (int argc, char *argv[])
   // process_create with a NULL argument so that the operating system
   // knows how many arguments you are sending.
   for(i=0; i<numprocs; i++) {
-    process_create(FILENAME_TO_RUN, h_mem_str, s_procs_completed_str, NULL);
+	  ditoa(i, i_str);
+    process_create(FILENAME_TO_RUN, h_mem_str, s_procs_completed_str, i_str , NULL);
     Printf("Process %d created\n", i);
   }
 
