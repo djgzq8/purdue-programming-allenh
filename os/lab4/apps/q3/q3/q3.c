@@ -5,10 +5,15 @@
 #include "../include/q3.h"
 void wait(int n);
 void eat(int *food);
+void test(int i);
+void pickup(int i);
+void putdown(int i);
+phil *mem;        // Used to access missile codes in shared memory page
+char mouthstate[4];
 
 void main (int argc, char *argv[])
 {
-	phil *mem;        // Used to access missile codes in shared memory page
+
 	uint32 h_mem;            // Handle to the shared memory page
 	sem_t s_procs_completed; // Semaphore to signal the original process that we're done
 	int phil_num = -1;
@@ -20,7 +25,16 @@ void main (int argc, char *argv[])
 		Printf("Usage: "); Printf(argv[0]); Printf(" <handle_to_shared_memory_page> <handle_to_page_mapped_semaphore>\n");
 		Exit();
 	}
-
+//	dstrcpy(mouthstate[0], "HUNGRY");
+	mouthstate[0] = 'H';
+//	mouthstate[0][1] = '\0';
+//	dstrcpy(mouthstate[1], "EATING");
+	mouthstate[1] = 'E';
+//	mouthstate[1][1] = '\0';
+//	dstrcpy(mouthstate[2], "THINKING");
+	mouthstate[2] = 'T';
+//	mouthstate[2][1] = '\0';
+	mouthstate[3] = '\0';
 	// Convert the command-line strings into integers for use as handles
 	h_mem = dstrtol(argv[1], NULL, 10); // The "10" means base 10
 	s_procs_completed = dstrtol(argv[2], NULL, 10);
@@ -33,56 +47,54 @@ void main (int argc, char *argv[])
 		Exit();
 	}
 
+
 	food = 100;
-	while (food > 0){
-		wait(100000*phil_num);
-		//		Printf("Philosopher %d picking up chopstick %d on his left\n", phil_num, phil_num);
-		if (mem->free[left] && mem->free[right]){
-			lock_acquire(mem->chopsticks[left]);
-			mem->free[left] = 0;
-			lock_acquire(mem->chopsticks[right]);
-			mem->free[right] = 0;
-			//			Printf("Philosopher %d picking up chopstick %d on his left\n", phil_num, (phil_num+1)%5);
+	while (food > 0 ){
 
-			wait(1000000);
-			//				Printf("Philosopher %d Eating food %d\n%d Foods left\n", phil_num, food, food-1);
-			eat(&food);
-			Printf("Hello from philosopher %d!\n", phil_num);
-			lock_acquire(mem->wait_locks[right]);
-			cond_signal(mem->wait[right]);
-			lock_release(mem->wait_locks[right]);
-			lock_acquire(mem->wait_locks[left]);
-			cond_signal(mem->wait[left]);
-			lock_release(mem->wait_locks[left]);
-
-
-			lock_release(mem->chopsticks[left]);
-			mem->free[left] = 1;
-			lock_release(mem->chopsticks[right]);
-			mem->free[right] = 1;
-		} else if (!mem->free[left]){
-			lock_acquire(mem->wait_locks[left]);
-			cond_wait(mem->wait[left]);
-			lock_release(mem->wait_locks[left]);
-		} else {
-			lock_acquire(mem->wait_locks[right]);
-			cond_wait(mem->wait[right]);
-			lock_release(mem->wait_locks[right]);
-		}
-
-
+		//this needs to be synchronized
+		// getchopsticks
+		pickup(phil_num);
+		eat(&food);
+		mem->eaten[phil_num] =  1;
+		Printf("%d is %c, right is %c, left is %c\n", phil_num, mouthstate[mem->state[phil_num]], mouthstate[mem->state[(phil_num + 1) % 5]], mouthstate[mem->state[(phil_num+4)%5]]);
+		putdown(phil_num);
+		wait(1000 * phil_num);
 	}
 	// Now print a message to show that everything worked
 
 
 	// Signal the semaphore to tell the original process that we're done
-	Printf("spawn_me: PID %d is complete.\n", getpid());
+	Printf("q3: PID %d is complete.\n", getpid());
 	if(sem_signal(s_procs_completed) != SYNC_SUCCESS) {
 		Printf("Bad semaphore s_procs_completed (%d) in ", s_procs_completed); Printf(argv[0]); Printf(", exiting...\n");
 		Exit();
 	}
 }
-
+void test(int i){
+	if ((mem->state[(i+4)%5] != EATING) &&
+		(mem->state[i] == HUNGRY) &&
+		(mem->state[(i + 1) % 5] != EATING))
+	{
+		lock_acquire(mem->wait_locks[i]);
+		mem->state[i] = EATING;
+		cond_signal(mem->self[i]);
+		lock_release(mem->wait_locks[i]);
+	}
+}
+void putdown(int i){
+	lock_release(mem->wait_locks[i]);
+	mem->state[i] = THINKING;
+	test((i+4)%5);
+	test((i+1)%5);
+}
+void pickup(int i){
+	lock_acquire(mem->wait_locks[i]);
+	mem->state[i] = HUNGRY;
+	test(i);
+	if (mem->state[i] != EATING){
+		cond_wait(mem->self[i]);
+	}
+}
 void wait(int n){
 	float value = 2.0;
 	float inter = 0;
@@ -96,5 +108,6 @@ void wait(int n){
 }
 
 void eat(int *food){
+
 	(*food)--;
 }

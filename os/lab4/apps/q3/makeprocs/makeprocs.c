@@ -39,11 +39,14 @@ void main (int argc, char *argv[])
 
   // Put some values in the shared memory, to be read by other processes
   for (i = 0; i < 5; i++){
-	  p->free[i] = 1;
-	  p->chopsticks[i] = lock_create();
+	  p->state[i] = THINKING;
 	  p->wait_locks[i] = lock_create();
-	  p->wait[i] = cond_create(p->wait_locks[i]);
+	  p->self[i] = cond_create(p->wait_locks[i]);
+	  p->eaten[i] = 0;
+
   }
+
+
 
   // Create semaphore to not exit this process until all other processes 
   // have signalled that they are complete.  To do this, we will initialize
@@ -71,10 +74,19 @@ void main (int argc, char *argv[])
     Printf("Process %d created\n", i);
   }
 
+
   // And finally, wait until all spawned processes have finished.
   if (sem_wait(s_procs_completed) != SYNC_SUCCESS) {
     Printf("Bad semaphore s_procs_completed (%d) in ", s_procs_completed); Printf(argv[0]); Printf("\n");
     Exit();
   }
+  for (i = 0; i < numprocs; i++){
+	  if (p->eaten[i] == 1){
+		  Printf("Philosopher %d has eaten\n", i);
+	  }else{
+		  Printf("Philosopher %d DID NOT eat\n", i);
+	  }
+  }
+
   Printf("All other processes completed, exiting main process.\n");
 }
