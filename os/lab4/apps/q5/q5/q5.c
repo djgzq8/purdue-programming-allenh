@@ -83,7 +83,7 @@ void rx2(void){
 //		sem_signal(mem->oxygen);
 //		sem_signal(mem->sulfer_dioxide);
 //		Printf("Consuming a sulfate molecule\n");
-//	}
+	}
 }
 void rx3(void){
 //	int i;

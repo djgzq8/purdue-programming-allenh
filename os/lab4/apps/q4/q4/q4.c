@@ -34,7 +34,7 @@ void main(int argc, char *argv[]){
 		//invalid argument
 	}
 	// Signal the semaphore to tell the original process that we're done
-//	Printf("q2: PID %d is complete.\n", getpid());
+	//	Printf("q2: PID %d is complete.\n", getpid());
 	if(sem_signal(s_procs_completed) != SYNC_SUCCESS) {
 		Printf("Bad semaphore s_procs_completed (%d) in ", s_procs_completed); Printf(argv[0]); Printf(", exiting...\n");
 		Exit();
@@ -59,17 +59,40 @@ void producer (uint32 h_mem)
 		//sem_wait(b->emptyCount);
 		//		} else{
 
-		sem_wait(b->emptyCount);
+		//		sem_wait(b->emptyCount);
+		//		lock_acquire(b->l);
+		//		Printf("Producer %d inserted: %c\n", getpid(), h[i]);
+		//		b->data[b->head] = h[i];
+		//		b->head = (b->head+1) % BUFFER_SIZE;
+		//		i++;
+		//		lock_release(b->l);
+		//		sem_signal(b->fillCount);
+
+		//		}
+
+		if ((b->head + 1) % BUFFER_SIZE == b->tail){
+			//buffer is full
+			lock_acquire(b->l_pro);
+			cond_wait(b->c_pro);
+			//now we have the lock still
+		}
+//		lock_acquire(b->r);
+
 		lock_acquire(b->l);
+
 		Printf("Producer %d inserted: %c\n", getpid(), h[i]);
 		b->data[b->head] = h[i];
 		b->head = (b->head+1) % BUFFER_SIZE;
 		i++;
 		lock_release(b->l);
-		sem_signal(b->fillCount);
+		//signal any consumers that may be waiting
+		lock_acquire(b->l_con);
+		cond_signal(b->c_con);
+		lock_release(b->l_con);
+		//then release the producer lock
+		lock_release(b->l_pro);
 
-		//		}
-}
+	}
 
 	//
 	//	// Now print a message to show that everything worked
@@ -94,18 +117,44 @@ void consumer (uint32 h_mem){
 		//			sem_wait(b->fillCount);
 		//		}else{
 
-		sem_wait(b->fillCount);
+		if (b->head == b->tail){
+			//buffer is empty
+			lock_acquire(b->l_con);
+			cond_wait(b->c_con);
+			//now we have the lock still
+		}
+		//		lock_acquire(b->r);
+
+//		Printf("Producer %d inserted: %c\n", getpid(), h[i]);
+//		b->data[b->head] = h[i];
+//		b->head = (b->head+1) % BUFFER_SIZE;
 		lock_acquire(b->l);
 		c = b->data[b->tail];
 		b->tail = (b->tail + 1) % BUFFER_SIZE;
 		i++;
 		Printf("Consumer %d removed:  %c\n", getpid(), c);
 		lock_release(b->l);
-		sem_signal(b->emptyCount);
+		//signal any consumers that may be waiting
+		lock_acquire(b->l_pro);
+		cond_signal(b->c_pro);
+		lock_release(b->l_pro);
+
+		//then release the producer lock
+		lock_release(b->l_con);
+
+
+
+//		sem_wait(b->fillCount);
+//		lock_acquire(b->l);
+
+//		i++;
+
+//		lock_release(b->l);
+//		sem_signal(b->emptyCount);
 
 		//		}
 
 	}
 
-//	Printf("q2->consumer: My PID is %d\n", getpid());
+	//	Printf("q2->consumer: My PID is %d\n", getpid());
 }

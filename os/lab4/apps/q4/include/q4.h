@@ -7,9 +7,12 @@ typedef struct buffer {
   int head;
   int tail;
   char data[BUFFER_SIZE];
+  lock_t l_pro;
+  lock_t l_con;
+  cond_t c_pro;
+  cond_t c_con;
   lock_t l;
-  sem_t fillCount;
-  sem_t emptyCount;
+
 } buffer;
 
 #define FILENAME_TO_RUN "q4.dlx.obj"

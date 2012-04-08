@@ -1,6 +1,6 @@
 all: os.dlx.obj
-	cd apps/q5; make
-	cd bin; dlxsim  -x os.dlx.obj -a -D s -u makeprocs.dlx.obj 4 4 
+	cd apps/q4; make
+	cd bin; dlxsim  -x os.dlx.obj -a -D y -u makeprocs.dlx.obj 4
 #; ee469_fixterminal
 
 clean:

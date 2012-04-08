@@ -45,9 +45,12 @@ void main (int argc, char *argv[])
   // Put some values in the shared memory, to be read by other processes
   circle->head = 0;
   circle->tail = 0;
-  circle->l = lock_create();
-  circle->fillCount = sem_create(0);
-  circle->emptyCount = sem_create(BUFFER_SIZE);
+  circle->l_pro = lock_create();
+  circle->l_con = lock_create();
+
+  circle->c_pro = cond_create(circle->l_pro);
+  circle->c_con = cond_create(circle->l_con);
+
   Printf("return of first lock_acquire = %d\n", lock_acquire(circle->l));
   Printf("Lock handle is %d\n", circle->l);
 
