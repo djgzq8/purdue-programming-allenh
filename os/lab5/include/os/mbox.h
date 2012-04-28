@@ -13,13 +13,28 @@
 // Define your mailbox structures here
 //--------------------------------------------
 
+typedef int mbox_t; // This is the "type" of mailbox handles
+
 typedef struct mbox_message {
+	int id;
+	char *message[MBOX_MAX_MESSAGE_LENGTH];
+	int length;
 } mbox_message;
 
 typedef struct mbox {
+	mbox_t handle;
+	int head;
+	int tail;
+	lock_t lock;
+	sem_t empty;
+	sem_t full;
+	int in_use;
+	int msg_count;
+	int users[MBOX_NUM_BUFFERS];
+	mbox_message msgs[MBOX_MAX_BUFFERS_PER_MBOX];
 } mbox;
 
-typedef int mbox_t; // This is the "type" of mailbox handles
+
 
 //-------------------------------------------
 // Prototypes for Mbox functions you have to write

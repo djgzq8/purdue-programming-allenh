@@ -17,8 +17,16 @@
 // on unused mailboxes.
 //
 //-------------------------------------------------------
+static mbox mbox_list[MBOX_NUM_MBOXES];
+static mbox_message message_list[MBOX_NUM_BUFFERS];
 
 void MboxModuleInit() {
+	int i;
+	for (i = 0; i < MBOX_NUM_MBOXES; i++) {
+		mbox_list[i].handle = (mbox_t)i;
+		mbox_list[i].in_use = 0;
+	}
+	return;
 }
 
 //-------------------------------------------------------
@@ -32,7 +40,22 @@ void MboxModuleInit() {
 //
 //-------------------------------------------------------
 mbox_t MboxCreate() {
-  return MBOX_FAIL;
+	int i;
+	int j;
+	for (i = 0; i < MBOX_NUM_MBOXES; i++) {  //modified (MBOX_NUM_BOXES)
+		if (mbox_list[i].in_use == 0){
+			mbox_list[i].in_use = 1;
+			mbox_list[i].msg_count = 0;
+			mbox_list[i].empty = SemCreate(MBOX_MAX_BUFFERS_PER_MBOX);  //modified (MBOX_MAX_BUFFERS)
+			mbox_list[i].full = SemCreate(0);
+			mbox_list[i].lock = LockCreate();
+			for(j = 0; j < MBOX_NUM_BUFFERS; j++) {
+				mbox_list[i].users[j] = 0;
+			}
+			return mbox_list[i].handle;
+		}
+	}
+ 	return MBOX_FAIL;
 }
 
 //-------------------------------------------------------
@@ -50,7 +73,20 @@ mbox_t MboxCreate() {
 //
 //-------------------------------------------------------
 int MboxOpen(mbox_t handle) {
-  return MBOX_FAIL;
+	int i;
+	if (handle >= 0 && handle < MBOX_NUM_MBOXES) {  //modified (MBOX_NUM_BOXES)
+		if (mbox_list[(int)handle].in_use >= 1 &&
+		    mbox_list[(int)handle].msg_count < MBOX_MAX_BUFFERS_PER_MBOX) {
+			for (i = 0; i < MBOX_NUM_BUFFERS; i++) {
+				if (mbox_list[(int)handle].users[i] == 0) {
+					mbox_list[(int)handle].users[i] = GetCurrentPid();
+					mbox_list[(int)handle].in_use++;
+				}
+			}
+			return MBOX_SUCCESS;
+		}
+	}
+	return MBOX_FAIL;
 }
 
 //-------------------------------------------------------
@@ -67,7 +103,20 @@ int MboxOpen(mbox_t handle) {
 //
 //-------------------------------------------------------
 int MboxClose(mbox_t handle) {
-  return MBOX_FAIL;
+	int i;
+	int pid = GetCurrentPid();
+	if (handle >= 0 && handle < MBOX_NUM_MBOXES) { //modified (MBOX_NUM_BOXES)
+		if (mbox_list[(int)handle].in_use >= 1) {
+			for (i = 0; i < MBOX_NUM_BUFFERS; i++) {
+				if (mbox_list[(int)handle].users[i] == pid) {
+					mbox_list[(int)handle].users[i] = 0;
+					mbox_list[(int)handle].in_use--;
+				}
+			}
+			return MBOX_SUCCESS;
+		}
+	}		
+	return MBOX_FAIL;
 }
 
 //-------------------------------------------------------
@@ -87,6 +136,21 @@ int MboxClose(mbox_t handle) {
 //
 //-------------------------------------------------------
 int MboxSend(mbox_t handle, int length, void* message) {
+	mbox tmp = mbox_list[handle];
+	LockHandleAcquire(tmp.lock);
+	while (tmp.msg_count >= MBOX_MAX_BUFFERS_PER_MBOX) {
+		SemWait(tmp.full);
+	}
+
+	//dstrncpy(tmp.msgs[tmp.head].message,message,length);
+	tmp.msgs[tmp.head].length = length;
+	tmp.head = (tmp.head + 1) % MBOX_MAX_BUFFERS_PER_MBOX;
+	tmp.msg_count++;
+
+	SemHandleSignal(tmp.empty);
+	LockHandleRelease(tmp.lock);
+	return MBOX_SUCCESS;
+	
   return MBOX_FAIL;
 }
 
@@ -107,7 +171,26 @@ int MboxSend(mbox_t handle, int length, void* message) {
 //
 //-------------------------------------------------------
 int MboxRecv(mbox_t handle, int maxlength, void* message) {
-  return MBOX_FAIL;
+	int size;
+	mbox tmp = mbox_list[handle];
+	LockHandleAcquire(tmp.lock);
+	while(tmp.msg_count == 0) {
+		SemWait(tmp.empty);
+	}
+
+	if (tmp.msgs[tmp.tail].length < maxlength) {
+		size = tmp.msgs[tmp.tail].length;
+	}
+	else {
+		return MBOX_FAIL;
+	}
+	//dstrncpy(message, tmp.msgs[tmp.tail].message,size);
+	tmp.tail = (tmp.tail + 1) % MBOX_MAX_BUFFERS_PER_MBOX;
+	tmp.msg_count--;
+
+	SemHandleSignal(tmp.full);
+	LockHandleRelease(tmp.lock);
+	return size;
 }
 
 //--------------------------------------------------------------------------------
@@ -123,5 +206,16 @@ int MboxRecv(mbox_t handle, int maxlength, void* message) {
 //
 //--------------------------------------------------------------------------------
 int MboxCloseAllByPid(int pid) {
-  return MBOX_FAIL;
+	int i;
+	int j;
+	for (i = 0; i < MBOX_NUM_MBOXES; i++) {
+		for (j = 0; j < MBOX_NUM_BUFFERS; j++) {
+				if (mbox_list[i].users[j] == pid) {       //modified (mbox_list[(int)handle].users[j] == pid)
+					mbox_list[i].users[i] = 0;  //modified (mbox_list[(int)handle].users[i] = 0)
+					mbox_list[i].in_use--;      //modified (mbox_list[(int)handle].in_use--)
+				}
+		}
+	}
+	return MBOX_SUCCESS;
+       //return MBOX_FAIL;
 }
