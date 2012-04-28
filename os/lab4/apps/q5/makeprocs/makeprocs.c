@@ -49,7 +49,7 @@ void main (int argc, char *argv[])
 	}
 
 	//if semphaphore is negative, then it will wait
-	atmos->water = sem_create(-1);
+	atmos->water = sem_create(0);
 	atmos->oxygen = sem_create(0);
 	atmos->hydrogen = sem_create(0);
 	atmos->sulfate = sem_create(0);
@@ -103,5 +103,7 @@ void main (int argc, char *argv[])
 		Printf("Bad semaphore s_procs_completed (%d) in ", s_procs_completed); Printf(argv[0]); Printf("\n");
 		Exit();
 	}
+	Printf("The final O2 has been created\n");
+	Printf("The final H2SO4 has been created\n");
 	Printf("All other processes completed, exiting main process.\n");
 }

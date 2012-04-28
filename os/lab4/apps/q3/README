@@ -1,6 +1,5 @@
 Read Me
 
 Part 3 Response
-Our implementation is starvation free because we only fill requests in the circular buffer in 
-one direction. This prevents us from ever being stuck on one section of the 
-buffer because we never go the opposite direction. 
+Our implementation has starvation because we only fill requests the same way and do not 
+monitor who has already eaten. 

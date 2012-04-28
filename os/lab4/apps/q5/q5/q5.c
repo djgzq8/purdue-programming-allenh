@@ -69,45 +69,56 @@ void rx1(void){
 	int i;
 	for (i = 0; i < mem->original_water_num; i += 2){
 		sem_wait(mem->water);
-//		sem_wait(mem->water);
+		sem_wait(mem->water);
 		sem_signal(mem->hydrogen);
-//		sem_signal(mem->hydrogen);
+		sem_signal(mem->hydrogen);
 		sem_signal(mem->oxygen);
 		Printf("Consume 2 water molecules\n");
 	}
+
 }
 void rx2(void){
-//	int i;
-//	for (i = 0; i < mem->original_sulfate_num; i++){
-//		sem_wait(mem->sulfate);
-//		sem_signal(mem->oxygen);
-//		sem_signal(mem->sulfer_dioxide);
-//		Printf("Consuming a sulfate molecule\n");
+	int i;
+	for (i = 0; i < mem->original_sulfate_num; i++){
+		sem_wait(mem->sulfate);
+		sem_signal(mem->oxygen);
+		sem_signal(mem->sulfer_dioxide);
+		Printf("Consuming a sulfate molecule\n");
 	}
 }
 void rx3(void){
-//	int i;
-//	for (i = 0; i < mem->original_sulfate_num; i++){
-//		sem_wait(mem->hydrogen);
-//		sem_wait(mem->oxygen);
-//		sem_wait(mem->sulfer_dioxide);
-//		Printf("RX3 process\n");
-//	}
+	int i;
+	int limit = 0;
+
+	if(mem->original_water_num < mem->original_sulfate_num){
+		limit = mem->original_water_num;
+	} else {
+		limit = mem->original_sulfate_num;
+	}
+
+	for (i = 0; i < limit; i++){
+		sem_wait(mem->hydrogen);
+		sem_wait(mem->oxygen);
+		sem_wait(mem->sulfer_dioxide);
+		Printf("Created H2SO4 %d\n", i+1);
+	}
+
+
 }
 void water(void){
 	int i;
-	for (i = 0; i <= mem->original_water_num; i += 2){
+	for (i = 0; i < mem->original_water_num; i += 2){
 		sem_signal(mem->water);
-//		sem_signal(mem->water);
-		Printf("Injected a total of %d water molecules\n", i+1);
+		sem_signal(mem->water);
+		Printf("Injected a total of %d water molecules\n", i+2);
 	}
 }
 
 void sulfate(void){
-//	int i;
-//	for (i = 0; i < mem->original_sulfate_num; i ++){
-//		sem_signal(mem->sulfate);
-//		Printf("Injected a total of %d sulfate molecules\n", i);
-//	}
+	int i;
+	for (i = 0; i < mem->original_sulfate_num; i ++){
+		sem_signal(mem->sulfate);
+		Printf("Injected a total of %d sulfate molecules\n", i+1);
+	}
 
 }
