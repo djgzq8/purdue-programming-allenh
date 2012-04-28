@@ -1,6 +1,6 @@
 all: os.dlx.obj
 	cd apps/example; make
-	cd bin; dlxsim  -x os.dlx.obj -a -D y -u makeprocs.dlx.obj 1
+	cd bin; dlxsim  -x os.dlx.obj -a -D s -u makeprocs.dlx.obj 8
 #; ee469_fixterminal
 
 

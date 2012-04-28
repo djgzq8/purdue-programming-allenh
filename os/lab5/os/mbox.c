@@ -163,18 +163,18 @@ int MboxSend(mbox_t handle, int length, void* message) {
 	mbox_list[handle].head = (mbox_list[handle].head + 1) % MBOX_MAX_BUFFERS_PER_MBOX;
 	mbox_list[handle].msg_count++;
 
-	printf("MBOX INFO: handle: %d\n head: %d\n tail: %d\n in_use: %d\n msg_count: %d\n ",mbox_list[handle].handle,
-			mbox_list[handle].head,mbox_list[handle].tail,mbox_list[handle].in_use,mbox_list[handle].msg_count);
-	printf("user_list: ");
-	for(i = 0; i < MBOX_NUM_BUFFERS; i++) {
-		printf("%d",mbox_list[handle].users[i]);
-	}
-	printf("\n\n msg info: \n");
-	for(i = 0; i < MBOX_MAX_MESSAGE_LENGTH; i++) {
-		printf("ID: %d, msg: %s, length: %d\n",mbox_list[handle].msgs[i].id,
-		                                         mbox_list[handle].msgs[i].message,
-		                                         mbox_list[handle].msgs[i].length);
-	}
+//	printf("MBOX INFO: handle: %d\n head: %d\n tail: %d\n in_use: %d\n msg_count: %d\n ",mbox_list[handle].handle,
+//			mbox_list[handle].head,mbox_list[handle].tail,mbox_list[handle].in_use,mbox_list[handle].msg_count);
+//	printf("user_list: ");
+//	for(i = 0; i < MBOX_NUM_BUFFERS; i++) {
+//		printf("%d",mbox_list[handle].users[i]);
+//	}
+//	printf("\n\n msg info: \n");
+//	for(i = 0; i < MBOX_MAX_MESSAGE_LENGTH; i++) {
+//		printf("ID: %d, msg: %s, length: %d\n",mbox_list[handle].msgs[i].id,
+//		                                         mbox_list[handle].msgs[i].message,
+//		                                         mbox_list[handle].msgs[i].length);
+//	}
 	SemHandleSignal(mbox_list[handle].full);
 	LockHandleRelease(mbox_list[handle].lock);
 	return MBOX_SUCCESS;
