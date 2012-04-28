@@ -837,7 +837,8 @@ void main (int argc, char *argv[])
   dbprintf ('i', "After initializing queues.\n");
   MemoryModuleInit ();
   dbprintf ('i', "After initializing memory.\n");
-
+  MboxModuleInit();
+  dbprintf ('i', "You're a jerk.\n");
   ProcessModuleInit ();
   dbprintf ('i', "After initializing processes.\n");
   ShareModuleInit ();

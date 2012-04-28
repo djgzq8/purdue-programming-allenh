@@ -17,7 +17,7 @@ typedef int mbox_t; // This is the "type" of mailbox handles
 
 typedef struct mbox_message {
 	int id;
-	char *message[MBOX_MAX_MESSAGE_LENGTH];
+	char message[MBOX_MAX_MESSAGE_LENGTH];
 	int length;
 } mbox_message;
 

@@ -353,6 +353,7 @@ static int TrapMboxSendHandler (uint32 *trapArgs, int sysMode)
     MemoryCopyUserToSystem (currentPCB, (trapArgs+1), &length, sizeof(int));
     // Argument 2: pointer to message data
     MemoryCopyUserToSystem (currentPCB, (trapArgs+2), &usermessage, sizeof(char *));
+
     // Now copy message data from user space to kernel space
     MemoryCopyUserToSystem (currentPCB, usermessage, msg, length);
   } else {

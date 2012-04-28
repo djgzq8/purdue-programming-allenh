@@ -1,7 +1,7 @@
 #include "usertraps.h"
 #include "misc.h"
 
-#include "spawn.h"
+#include "../include/spawn.h"
 
 void main (int argc, char *argv[])
 {
@@ -24,7 +24,7 @@ void main (int argc, char *argv[])
 
   // Allocate space for a mailbox
   if ((h_mbox = mbox_create()) == MBOX_FAIL) {
-    Printf("makeprocs (%d): ERROR: could not allocate mailbox!", getpid());
+    Printf("makeprocs (%d): ERROR: could not allocate mailbox!\n", getpid());
     Exit();
   }
 
@@ -62,14 +62,13 @@ void main (int argc, char *argv[])
     process_create(FILENAME_TO_RUN, 0, 0, h_mbox_str, s_procs_completed_str, NULL);
     Printf("makeprocs (%d): Process %d created\n", getpid(), i);
   }
-
+  Printf("makeprocs (%d): Finished creating processes\n", getpid(), i);
   // Send the missile code messages
   for (i=0; i<numprocs; i++) {
     if (mbox_send(h_mbox, sizeof(missile_code), (void *)&mc) == MBOX_FAIL) {
       Printf("Could not send message to mailbox %d in %s (%d)\n", h_mbox, argv[0], getpid());
       Exit();
     }
-    Printf("makeprocs (%d): Sent message %d\n", getpid(), i);
   }
 
   // And finally, wait until all spawned processes have finished.
