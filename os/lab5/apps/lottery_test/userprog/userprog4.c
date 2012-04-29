@@ -1,4 +1,6 @@
 #include "lab2-api.h"
+#include "usertraps.h"
+#include "misc.h"
 
 /*
   This is the testcase for question 3
@@ -10,7 +12,7 @@ typedef struct DB {
   int end;
 } DB;
 
-main (int argc, char *argv[])
+int main (int argc, char *argv[])
 {
   int number, i, j, offset;
   uint32 handle;
@@ -40,9 +42,8 @@ main (int argc, char *argv[])
       for(i = 0; i < number; i++)
       {
         ditoa(i, num_str);
-        process_create(1 + i, 0, "userprog4.dlx.obj", num_str, 
-                       spage_str, handle_str,
-                       NULL);     // different p_nice for child process
+        process_create("userprog4.dlx.obj",1 + i, 0,num_str, spage_str, handle_str, NULL);  //trap 0x432
+
       }
 
       sem_wait(spage);            // wait for the children to reach 200

@@ -25,12 +25,13 @@ static int last_trigger_jiffies = 0; // Keeps track of last time we triggered Pr
 //-------------------------------------------------------------
 void ClkModuleInit() {
   curtime = 0;
-  clock_resolution = CLOCK_DEFAULT_RESOLUTION; // 100 usec per jiffy
+  clock_resolution = CLOCK_DEFAULT_RESOLUTION; // 10000 usec per jiffy
   clock_running = 0;
 }
 
 //-------------------------------------------------------------
 // ClkStart starts timer interrupts 
+// Timer fires every clock_resolution ms
 //-------------------------------------------------------------
 void ClkStart() {
   clock_running = 1;
@@ -51,6 +52,7 @@ void ClkStop() {
 // trigger a call to ProcessSchedule.  Returns 0 otherwise.
 //-------------------------------------------------------------
 int ClkInterrupt() {
+//	printf("current time %f s\n", ClkGetCurTime());
   if (clock_running) {
     curtime++;
     // Set the timer to go off again so that it can be
@@ -111,3 +113,9 @@ inline int ClkGetCurJiffies() {
 void ClkResetProcess() {
   last_trigger_jiffies = curtime;
 }
+
+inline double Jiffies2Seconds(int j){
+	return (double)clock_resolution / (double)1000000 * (double)j;
+}
+
+

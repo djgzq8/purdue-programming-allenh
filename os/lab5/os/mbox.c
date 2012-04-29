@@ -158,7 +158,7 @@ int MboxSend(mbox_t handle, int length, void* message) {
 	LockHandleAcquire(mbox_list[handle].lock);
 
 	bcopy(message,mbox_list[handle].msgs[mbox_list[handle].head].message,length);
-	printf("send %c\n",((missile_code *)mbox_list[handle].msgs[mbox_list[handle].head].message)->really_important_char);
+	dbprintf('m', "send %c\n",((missile_code *)mbox_list[handle].msgs[mbox_list[handle].head].message)->really_important_char);
 	mbox_list[handle].msgs[mbox_list[handle].head].length = length;
 	mbox_list[handle].head = (mbox_list[handle].head + 1) % MBOX_MAX_BUFFERS_PER_MBOX;
 	mbox_list[handle].msg_count++;
@@ -213,7 +213,7 @@ int MboxRecv(mbox_t handle, int maxlength, void* message) {
 		return MBOX_FAIL;
 	}
 	bcopy(mbox_list[handle].msgs[mbox_list[handle].tail].message,message, size);
-	printf("recv %c\n",((missile_code *)mbox_list[handle].msgs[mbox_list[handle].tail].message)->really_important_char);
+	dbprintf('m', "recv %c\n",((missile_code *)mbox_list[handle].msgs[mbox_list[handle].tail].message)->really_important_char);
 	mbox_list[handle].tail = (mbox_list[handle].tail + 1) % MBOX_MAX_BUFFERS_PER_MBOX;
 	mbox_list[handle].msg_count--;
 

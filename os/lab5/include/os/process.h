@@ -45,6 +45,8 @@ typedef struct PCB {
 
   int           pinfo;          // Turns on printing of runtime stats
   int           pnice;          // Used in priority calculation
+  int			jiffies;
+  int			start_time;
 } PCB;
 
 // Offsets of various registers from the stack pointer in the register
@@ -71,9 +73,17 @@ typedef struct PCB {
 // Number of jiffies in a single process quantum (i.e. how often ProcessSchedule is called)
 #define PROCESS_QUANTUM_JIFFIES  CLOCK_PROCESS_JIFFIES
 
-// Use this format string for printing CPU stats
-#define PROCESS_CPUSTATS_FORMAT "CPUStats: Process %d has run for %d jiffies, prio = %d\n"
+#define RR_SCHED 0
+#define LT_SCHED 1
 
+#define PROCESS_MAX_TICKETS 19
+#define PROCESS_MIN_TICKETS 1
+
+// Use this format string for printing CPU stats
+//#define PROCESS_CPUSTATS_FORMAT "CPUStats: Process %d has run for %f s, prio = %d\n"
+#define TIMESTRING1 "Process %d has run for"
+#define TIMESTRING2 " %f s\n"
+#define TIMESTRING3 "Process %d 's priority is %d \n"
 extern PCB	*currentPCB;
 
 int ProcessFork (VoidFunc func, uint32 param, int pnice, int pinfo,char *name, int isUser);

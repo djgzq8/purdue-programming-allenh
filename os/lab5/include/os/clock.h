@@ -8,7 +8,7 @@
 #define CLOCK_DEFAULT_RESOLUTION 1000 // in microseconds
 // Define the default number of jiffies which must pass before ProcessSchedule
 // is called.
-#define CLOCK_PROCESS_JIFFIES    (10000/CLOCK_DEFAULT_RESOLUTION) // Call Process Schedule 
+#define CLOCK_PROCESS_JIFFIES    (10000/CLOCK_DEFAULT_RESOLUTION) // Call Process Schedule
 
 void ClkModuleInit();   // Initializes the clock module
 void ClkStart();        // Starts the clock firing
@@ -19,5 +19,6 @@ inline int ClkGetResolution(); // Returns the resolution of the clock, in micros
 inline double ClkGetCurTime();    // Returns number of milliseconds since clock was started
 inline int ClkGetCurJiffies(); // Returns number of jiffies that have fired since clock started
 void ClkResetProcess();  // Resets the current process counter to the current time
+inline double Jiffies2Seconds(int j);
 
 #endif
