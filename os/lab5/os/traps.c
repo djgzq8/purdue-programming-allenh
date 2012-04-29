@@ -148,7 +148,7 @@ static void TrapProcessCreateHandler(uint32 *trapArgs, int sysmode) {
       exitsim();
     }
     numargs = i+1;
-    printf("%d args\n", numargs);
+
     // Arguments are now setup
   } else {
     // Addresses are already in kernel space, so just copy into our local variables 

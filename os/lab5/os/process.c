@@ -109,8 +109,12 @@ void ProcessModuleInit() {
 //----------------------------------------------------------------------
 void ProcessSetStatus(PCB *pcb, int status) {
 	pcb->flags &= ~PROCESS_STATUS_MASK;
+
 	pcb->flags |= status;
+
 }
+
+
 
 //----------------------------------------------------------------------
 //
@@ -218,22 +222,46 @@ void ProcessSchedule() {
 	float draw = 0;
 	float lower = 0;
 	float higher = 0;
+	int sleeping = 0;
 
 	srandom(ClkGetCurJiffies());
 
 
-
-
-
 	dbprintf('p', "Now entering ProcessSchedule (cur=0x%x, %d ready)\n",
 			(int)currentPCB, AQueueLength (&runQueue));
+
+	//unyield a  yielding process
+	if (currentPCB->flags & PROCESS_STATUS_YIELDING){
+		ProcessSetStatus(currentPCB, PROCESS_STATUS_RUNNABLE);
+	} else if (currentPCB->flags & PROCESS_STATUS_SLEEPING){
+		//when there is nothing in the runQueue and
+		//the currentPCB is sleeping, switch in the IDLE process
+	}
+
+	//now always check the waitQueue
+	if (!AQueueEmpty(&waitQueue)) {
+		l = AQueueFirst(&waitQueue);
+		while (l != NULL) {
+			pcb = AQueueObject(l);
+			if (pcb->flags & PROCESS_STATUS_SLEEPING){
+				printf("Started sleeping at %f ", pcb->sleep_start);
+				printf("for %d seconds ", pcb->sleep_time);
+				printf("waiting for %f\n", (pcb->sleep_start - ClkGetCurTime()));
+				sleeping = 1;
+				if ((ClkGetCurTime() - pcb->sleep_start) > pcb->sleep_time){
+					ProcessWakeup(pcb);
+				}
+			}
+			l = AQueueNext(l);
+		}
+	}
+
 	// The OS exits if there's no runnable process.  This is a feature, not a
 	// bug.  An easy solution to allowing no runnable "user" processes is to
 	// have an "idle" process that's simply an infinite loop.
-	if (AQueueEmpty(&runQueue)) {
-		if (!AQueueEmpty(&waitQueue)) {
-			printf(
-					"FATAL ERROR: no runnable processes, but there are sleeping processes waiting!\n");
+	if (AQueueEmpty(&runQueue) && !sleeping) {
+		if (!AQueueEmpty(&waitQueue) ) {//wait queue not empty
+			printf("FATAL ERROR: no runnable processes, but there are sleeping processes waiting!\n");
 			l = AQueueFirst(&waitQueue);
 			while (l != NULL) {
 				pcb = AQueueObject(l);
@@ -245,54 +273,48 @@ void ProcessSchedule() {
 		}
 		printf("No runnable processes - exiting!\n");
 		exitsim(); // NEVER RETURNS
-	}
-
-	// Move the front of the queue to the end.  The running process was the one in front.
-	AQueueMoveAfter(&runQueue, AQueueLast(&runQueue), AQueueFirst(&runQueue));
-	if (SCHEDULER == RR_SCHED){
-
-		// Now, run the one at the head of the queue.
-		pcb = (PCB *)AQueueObject(AQueueFirst(&runQueue));
-	}else if (SCHEDULER == LT_SCHED){
-		//		printf("Scheduler\n");
-		//		if (AQueueLength(&runQueue) > 1){//doesn't make sense to lottery one process
-		draw = (float)random()/4294967296u;;
-		//printf("random = %f\n", draw);
-		l = AQueueFirst(&runQueue);
-		//			pcb1 = AQueueObject(l);
-		//			pcb2 = AQueueObject(AQueueNext(l));
-		while (l != NULL) {
-			pcb = AQueueObject(l);
-			higher += pcb->pnice/(float)total_tickets;
-			if (draw >= lower && draw < higher){
-				//					printf("PID = %d has %d tickets\n", GetPidFromAddress(pcb), pcb->pnice);
-				//
-				//					printf("Low=%f   ", lower);
-				//					printf("draw=%f  ", draw);
-				//					printf("high=%f   \n", higher);
-
-				break;
-			}
-			lower = higher;
-			l = AQueueNext(l);
-		}
+	}else if(AQueueEmpty(&runQueue) && sleeping == 1){
+		printf("Idle\n");
 	}else {
-		printf("ERROR: Must set SCHEDULER Macro in process.c\n");
-	}
-	//ah
-	currentPCB->jiffies += ClkGetCurJiffies() - currentPCB->start_time;
-	if(currentPCB->pinfo == 1){
-		printf(TIMESTRING1, GetCurrentPid());
-		printf(TIMESTRING2, Jiffies2Seconds(currentPCB->jiffies));
-		printf(TIMESTRING3, GetCurrentPid(), currentPCB->pnice );
-	}
+//		printf("Scheduler\n");
+		//	if (currentPCB->flags & PROCESS_STATUS_RUNNABLE){}
 
-	currentPCB = pcb;
-	currentPCB->start_time = ClkGetCurJiffies();
-	dbprintf('p', "About to switch to PCB 0x%x,flags=0x%x @ 0x%x\n",
-			(int)pcb, pcb->flags, (int)(pcb->sysStackPtr[PROCESS_STACK_IAR]));
-	// Clean up zombie processes here.  This is done at interrupt time
-	// because it can't be done while the process might still be running
+		AQueueMoveAfter(&runQueue, AQueueLast(&runQueue), AQueueFirst(&runQueue)); // Move front to end of queue
+
+		if (SCHEDULER == RR_SCHED){
+			pcb = (PCB *)AQueueObject(AQueueFirst(&runQueue));// run process at head of queue
+		}else if (SCHEDULER == LT_SCHED){
+			draw = (float)random()/4294967295u;;
+			l = AQueueFirst(&runQueue);
+			while (l != NULL) {
+				pcb = AQueueObject(l);
+				higher += pcb->pnice/(float)total_tickets;
+				if (draw >= lower && draw < higher){
+					break;
+				}
+				lower = higher;
+				l = AQueueNext(l);
+			}
+		}else {
+			printf("ERROR: Must set SCHEDULER Macro in process.c\n");
+		}
+
+		//this is for pinfo
+		currentPCB->jiffies += ClkGetCurJiffies() - currentPCB->start_time;
+		if(currentPCB->pinfo == 1){
+			printf(TIMESTRING1, GetCurrentPid());
+			printf(TIMESTRING2, Jiffies2Seconds(currentPCB->jiffies));
+			printf(TIMESTRING3, GetCurrentPid(), currentPCB->pnice );
+		}
+
+		//this replaces the currentPCB with the new process
+		currentPCB = pcb;
+		currentPCB->start_time = ClkGetCurJiffies();
+		dbprintf('p', "About to switch to PCB 0x%x,flags=0x%x @ 0x%x\n",
+				(int)pcb, pcb->flags, (int)(pcb->sysStackPtr[PROCESS_STACK_IAR]));
+		// Clean up zombie processes here.  This is done at interrupt time
+		// because it can't be done while the process might still be running
+	}
 	while (!AQueueEmpty(&zombieQueue)) {
 		pcb = (PCB *) AQueueObject(AQueueFirst(&zombieQueue));
 		dbprintf('p', "Freeing zombie PCB 0x%x.\n", (int)pcb);
@@ -320,17 +342,21 @@ void ProcessSchedule() {
 void ProcessSuspend(PCB *suspend) {
 	// Make sure it's already a runnable process.
 	dbprintf('p', "ProcessSuspend (%d): function started\n", GetCurrentPid());
-	ASSERT(suspend->flags & PROCESS_STATUS_RUNNABLE,
-			"Trying to suspend a non-running process!\n");
-	ProcessSetStatus(suspend, PROCESS_STATUS_WAITING);
-
-	if (suspend->jiffies < CLOCK_PROCESS_JIFFIES && suspend->pnice > 1){
-		total_tickets -= 1;
-		suspend->pnice -= 1;
-	}else{
-		if(suspend->pnice < PROCESS_MAX_TICKETS){
-			suspend->pnice += 1;
-			total_tickets += 1;
+	printf("ProcessSuspend (%d): function started\n", suspend->flags);
+	//ProcessUserSleep does something special
+	if (!(suspend->flags & PROCESS_STATUS_SLEEPING)){
+		printf("Inside\n");
+		ASSERT(suspend->flags & PROCESS_STATUS_RUNNABLE,
+				"Trying to suspend a non-running process!\n");
+		ProcessSetStatus(suspend, PROCESS_STATUS_WAITING);
+		if (suspend->jiffies < CLOCK_PROCESS_JIFFIES && suspend->pnice > 1){
+			total_tickets -= 1;
+			suspend->pnice -= 1;
+		}else{
+			if(suspend->pnice < PROCESS_MAX_TICKETS){
+				suspend->pnice += 1;
+				total_tickets += 1;
+			}
 		}
 	}
 
@@ -347,7 +373,7 @@ void ProcessSuspend(PCB *suspend) {
 		printf("FATAL ERROR: could not insert suspend PCB into waitQueue!\n");
 		exitsim();
 	}
-	dbprintf('p', "ProcessSuspend (%d): function complete\n", GetCurrentPid());
+	printf( "ProcessSuspend (%d): function complete\n", GetCurrentPid());
 }
 
 //----------------------------------------------------------------------
@@ -364,10 +390,12 @@ void ProcessSuspend(PCB *suspend) {
 //
 //----------------------------------------------------------------------
 void ProcessWakeup(PCB *wakeup) {
-	dbprintf('p', "Waking up PID %d.\n", (int)(wakeup - pcbs));
+	printf("Waking up PID %d.\n", (int)(wakeup - pcbs));
 	// Make sure it's not yet a runnable process.
-	ASSERT(wakeup->flags & PROCESS_STATUS_WAITING,
-			"Trying to wake up a non-sleeping process!\n");
+	if (!(wakeup->flags & PROCESS_STATUS_WAITING)
+			&& !(wakeup->flags & PROCESS_STATUS_SLEEPING)){
+		printf("Trying to wake up a non-sleeping process!\n");
+	}
 	ProcessSetStatus(wakeup, PROCESS_STATUS_RUNNABLE);
 	if (AQueueRemove(&(wakeup->l)) != QUEUE_SUCCESS) {
 		printf(
@@ -520,7 +548,7 @@ int ProcessFork(VoidFunc func, uint32 param, int pnice, int pinfo, char *name,
 	// to be set to the bottom of the interrupt stack frame, which is at the
 	// high end (address-wise) of the system stack.
 	stackframe = ((uint32 *) (pcb->sysStackArea + MEMORY_PAGE_SIZE))
-																													- (PROCESS_STACK_FRAME_SIZE + 8);
+																																															- (PROCESS_STACK_FRAME_SIZE + 8);
 	// The system stack pointer is set to the base of the current interrupt
 	// stack frame.
 	pcb->sysStackPtr = stackframe;
@@ -1074,7 +1102,17 @@ int GetPidFromAddress(PCB *pcb) {
 // followed by a call to ProcessSchedule (in traps.c).
 //--------------------------------------------------------
 void ProcessUserSleep(int seconds) {
-	// Your code here
+	printf("Process user sleep\n");
+	ProcessSetStatus(currentPCB, PROCESS_STATUS_SLEEPING);
+	ProcessSuspend(currentPCB);
+	currentPCB->sleep_start = ClkGetCurTime();
+	currentPCB->sleep_time = seconds;
+
+	/*puts the current process to sleep for the specified number of seconds.
+	 * update a sleeping process's no of tickets properly when it is woken up.
+	 * update ProcessSchedule to look for any "autowake" processes that should be woken up after a given number of jiffies.
+	 * update the ProcessSchedule function to NOT update the no of tickets of a process marked as sleeping.
+	 */
 }
 
 //-----------------------------------------------------
@@ -1083,5 +1121,7 @@ void ProcessUserSleep(int seconds) {
 // ProcessSchedule (in traps.c).
 //-----------------------------------------------------
 void ProcessYield() {
-	// Your code here
+	//Set yielding
+//	printf("ProcessYield()\n");
+	ProcessSetStatus(currentPCB, PROCESS_STATUS_YIELDING);
 }

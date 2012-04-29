@@ -26,7 +26,9 @@
 #define	PROCESS_STATUS_WAITING	0x4
 #define	PROCESS_STATUS_STARTING	0x8
 #define	PROCESS_STATUS_ZOMBIE	0x10
-#define	PROCESS_STATUS_MASK	0x3f
+#define	PROCESS_STATUS_SLEEPING	0x20
+#define	PROCESS_STATUS_YIELDING	0x40
+#define	PROCESS_STATUS_MASK	0x7F
 #define	PROCESS_TYPE_SYSTEM	0x100
 #define	PROCESS_TYPE_USER	0x200
 
@@ -47,6 +49,8 @@ typedef struct PCB {
   int           pnice;          // Used in priority calculation
   int			jiffies;
   int			start_time;
+  double			sleep_start;
+  int			sleep_time;
 } PCB;
 
 // Offsets of various registers from the stack pointer in the register
