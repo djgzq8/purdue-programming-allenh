@@ -49,7 +49,7 @@ typedef struct PCB {
   int           pnice;          // Used in priority calculation
   int			jiffies;
   int			start_time;
-  double			sleep_start;
+  double		sleep_start;
   int			sleep_time;
 } PCB;
 
@@ -104,5 +104,8 @@ int GetPidFromAddress(PCB *pcb);
 
 void ProcessUserSleep(int seconds);
 void ProcessYield();
+
+void ProcessIdle();
+void PrintRunQueue();
 
 #endif	/* __process_h__ */

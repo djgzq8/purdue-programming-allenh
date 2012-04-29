@@ -67,12 +67,14 @@ int main (int argc, char *argv[])
       for(i = 0; !db->end; i ++)
       {
         for(j = 0; j < 50000; j++){
-        	if (j % 100 == 0 && offset == 1){
-//        		yield();     //waste some time
-        	}
         }
         Printf("%c%d\n",'A'+offset, i);
-        if(i > 100) sem_signal(spage);  //signal end
+//        if (i % 5 == 0 && offset == 1){
+//                		Printf("i = %d, Sleeping %c\n", i, 'A'+offset);
+//                		sleep(1);
+//        //        		yield();     //waste some time
+//                	}
+        if(i > 200) sem_signal(spage);  //signal end
       }
       Printf("***** Process %d reached %d *****\n", getpid(), i);
 

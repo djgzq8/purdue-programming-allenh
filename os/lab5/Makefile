@@ -1,6 +1,8 @@
 all: os.dlx.obj
-	cd apps/lottery_test; make
-	cd bin; dlxsim -x os.dlx.obj -a -u userprog4.dlx.obj 2
+#	cd apps/lottery_test; make
+	cd apps/q2; make
+	cd bin; dlxsim -x os.dlx.obj -a -u makeprocs.dlx.obj 4 4
+#	cd bin; dlxsim -x os.dlx.obj -a -u userprog4.dlx.obj 2
 #; ee469_fixterminal
 
 

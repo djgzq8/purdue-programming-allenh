@@ -38,6 +38,11 @@ static Queue runQueue;
 // different conditions.
 static Queue waitQueue;
 
+// List of processes that are waiting for something to happen.  There's no
+// reason why this must be a single list; there could be many lists for many
+// different conditions.
+static Queue sleepQueue;
+
 // List of processes waiting to be deleted.  See below for a description of
 // the reason that we need a separate queue for processes about to die.
 static Queue zombieQueue;
@@ -45,6 +50,9 @@ static Queue zombieQueue;
 // Static area for all process control blocks.  This is necessary because
 // we can't use malloc() inside the OS.
 static PCB pcbs[PROCESS_MAX_PROCS];
+
+static PCB idlePCB;
+static PCB *idle = &idlePCB;
 
 static uint32 total_tickets = 0;
 // String listing debugging options to print out.
@@ -73,7 +81,17 @@ void ProcessModuleInit() {
 	AQueueInit(&freepcbs);
 	AQueueInit(&runQueue);
 	AQueueInit(&waitQueue);
+	AQueueInit(&sleepQueue);
 	AQueueInit(&zombieQueue);
+
+	idlePCB.jiffies = 0;
+	idlePCB.pinfo = 0;
+	idlePCB.flags = PROCESS_STATUS_FREE;
+	if ((idlePCB.l = AQueueAllocLink(&idlePCB)) == NULL) {
+		printf(
+				"FATAL ERROR: could not allocate idlePCB link in ProcessModuleInit!\n");
+		exitsim();
+	}
 	// For each PCB slot in the global pcbs array:
 	for (i = 0; i < PROCESS_MAX_PROCS; i++) {
 		dbprintf('p', "Initializing PCB %d @ 0x%x.\n", i, (int)&(pcbs[i]));
@@ -109,9 +127,7 @@ void ProcessModuleInit() {
 //----------------------------------------------------------------------
 void ProcessSetStatus(PCB *pcb, int status) {
 	pcb->flags &= ~PROCESS_STATUS_MASK;
-
 	pcb->flags |= status;
-
 }
 
 
@@ -229,7 +245,7 @@ void ProcessSchedule() {
 
 	dbprintf('p', "Now entering ProcessSchedule (cur=0x%x, %d ready)\n",
 			(int)currentPCB, AQueueLength (&runQueue));
-
+	PrintRunQueue();
 	//unyield a  yielding process
 	if (currentPCB->flags & PROCESS_STATUS_YIELDING){
 		ProcessSetStatus(currentPCB, PROCESS_STATUS_RUNNABLE);
@@ -244,11 +260,10 @@ void ProcessSchedule() {
 		while (l != NULL) {
 			pcb = AQueueObject(l);
 			if (pcb->flags & PROCESS_STATUS_SLEEPING){
-				printf("Started sleeping at %f ", pcb->sleep_start);
-				printf("for %d seconds ", pcb->sleep_time);
-				printf("waiting for %f\n", (pcb->sleep_start - ClkGetCurTime()));
 				sleeping = 1;
-				if ((ClkGetCurTime() - pcb->sleep_start) > pcb->sleep_time){
+				if ((int)(ClkGetCurTime() - pcb->sleep_start) >= pcb->sleep_time){
+					printf("waking up process %d ", GetPidFromAddress(pcb));
+					printf("after %d seconds\n", (int)(ClkGetCurTime() - pcb->sleep_start));
 					ProcessWakeup(pcb);
 				}
 			}
@@ -256,10 +271,13 @@ void ProcessSchedule() {
 		}
 	}
 
+
+
 	// The OS exits if there's no runnable process.  This is a feature, not a
 	// bug.  An easy solution to allowing no runnable "user" processes is to
 	// have an "idle" process that's simply an infinite loop.
 	if (AQueueEmpty(&runQueue) && !sleeping) {
+		//		printf("Scheduler: empty queue and no sleeping\n");
 		if (!AQueueEmpty(&waitQueue) ) {//wait queue not empty
 			printf("FATAL ERROR: no runnable processes, but there are sleeping processes waiting!\n");
 			l = AQueueFirst(&waitQueue);
@@ -273,23 +291,27 @@ void ProcessSchedule() {
 		}
 		printf("No runnable processes - exiting!\n");
 		exitsim(); // NEVER RETURNS
-	}else if(AQueueEmpty(&runQueue) && sleeping == 1){
-		printf("Idle\n");
+	}else if(AQueueEmpty(&runQueue) && sleeping == 1 && currentPCB != idle){
+		printf("ProcessSchedule: switching in ProcessIdle\n");
+		currentPCB = idle;
 	}else {
-//		printf("Scheduler\n");
+		//		printf("Scheduler\n");
 		//	if (currentPCB->flags & PROCESS_STATUS_RUNNABLE){}
 
-		AQueueMoveAfter(&runQueue, AQueueLast(&runQueue), AQueueFirst(&runQueue)); // Move front to end of queue
-
+		if (currentPCB != idle){//don't put the idle process on the run queue
+			AQueueMoveAfter(&runQueue, AQueueLast(&runQueue), AQueueFirst(&runQueue)); // Move front to end of queue
+		}
 		if (SCHEDULER == RR_SCHED){
 			pcb = (PCB *)AQueueObject(AQueueFirst(&runQueue));// run process at head of queue
 		}else if (SCHEDULER == LT_SCHED){
 			draw = (float)random()/4294967295u;;
+
 			l = AQueueFirst(&runQueue);
 			while (l != NULL) {
 				pcb = AQueueObject(l);
 				higher += pcb->pnice/(float)total_tickets;
 				if (draw >= lower && draw < higher){
+					printf("ProcessSchedule: switching in pid = %d\n", GetPidFromAddress(pcb));
 					break;
 				}
 				lower = higher;
@@ -342,10 +364,9 @@ void ProcessSchedule() {
 void ProcessSuspend(PCB *suspend) {
 	// Make sure it's already a runnable process.
 	dbprintf('p', "ProcessSuspend (%d): function started\n", GetCurrentPid());
-	printf("ProcessSuspend (%d): function started\n", suspend->flags);
+	PrintRunQueue();
 	//ProcessUserSleep does something special
 	if (!(suspend->flags & PROCESS_STATUS_SLEEPING)){
-		printf("Inside\n");
 		ASSERT(suspend->flags & PROCESS_STATUS_RUNNABLE,
 				"Trying to suspend a non-running process!\n");
 		ProcessSetStatus(suspend, PROCESS_STATUS_WAITING);
@@ -373,7 +394,7 @@ void ProcessSuspend(PCB *suspend) {
 		printf("FATAL ERROR: could not insert suspend PCB into waitQueue!\n");
 		exitsim();
 	}
-	printf( "ProcessSuspend (%d): function complete\n", GetCurrentPid());
+	dbprintf('p', "ProcessSuspend (%d): function complete\n", GetCurrentPid());
 }
 
 //----------------------------------------------------------------------
@@ -390,7 +411,7 @@ void ProcessSuspend(PCB *suspend) {
 //
 //----------------------------------------------------------------------
 void ProcessWakeup(PCB *wakeup) {
-	printf("Waking up PID %d.\n", (int)(wakeup - pcbs));
+	dbprintf('p', "Waking up PID %d.\n", (int)(wakeup - pcbs));
 	// Make sure it's not yet a runnable process.
 	if (!(wakeup->flags & PROCESS_STATUS_WAITING)
 			&& !(wakeup->flags & PROCESS_STATUS_SLEEPING)){
@@ -407,11 +428,15 @@ void ProcessWakeup(PCB *wakeup) {
 				"FATAL ERROR: could not get link for wakeup PCB in ProcessWakeup!\n");
 		exitsim();
 	}
+
+
 	if (AQueueInsertLast(&runQueue, wakeup->l) != QUEUE_SUCCESS) {
 		printf(
 				"FATAL ERROR: could not insert link into runQueue in ProcessWakeup!\n");
 		exitsim();
 	}
+
+
 }
 
 
@@ -548,7 +573,7 @@ int ProcessFork(VoidFunc func, uint32 param, int pnice, int pinfo, char *name,
 	// to be set to the bottom of the interrupt stack frame, which is at the
 	// high end (address-wise) of the system stack.
 	stackframe = ((uint32 *) (pcb->sysStackArea + MEMORY_PAGE_SIZE))
-																																															- (PROCESS_STACK_FRAME_SIZE + 8);
+																																																									- (PROCESS_STACK_FRAME_SIZE + 8);
 	// The system stack pointer is set to the base of the current interrupt
 	// stack frame.
 	pcb->sysStackPtr = stackframe;
@@ -560,15 +585,18 @@ int ProcessFork(VoidFunc func, uint32 param, int pnice, int pinfo, char *name,
 		pcb->pnice = 1;
 		total_tickets += 1;
 
+
 	}else if(pnice > PROCESS_MAX_TICKETS){
 		pcb->pnice = 19;
 		total_tickets += 19;
+
 	}
 	else{
 		pcb->pnice = pnice;
 		total_tickets += pnice;
+
 	}
-	printf("total_tickets %d\n", total_tickets);
+
 
 	dbprintf('p',
 			"Setting up PCB @ 0x%x (sys stack=0x%x, mem=0x%x, size=0x%x)\n",
@@ -605,11 +633,12 @@ int ProcessFork(VoidFunc func, uint32 param, int pnice, int pinfo, char *name,
 
 
 	if (isUser) {
-		dbprintf('p', "About to load %s\n", name);
+		dbprintf('p', "About to load user program %s\n", name);
 		fd = ProcessGetCodeInfo(name, &start, &codeS, &codeL, &dataS, &dataL);
 		if (fd < 0) {
 			// Free newpage and pcb so we don't run out...
 			ProcessFreeResources(pcb);
+			printf("couldn't load file\n");
 			return (-1);
 		}
 		dbprintf('p', "File %s -> start=0x%08x\n", name, start);
@@ -654,6 +683,8 @@ int ProcessFork(VoidFunc func, uint32 param, int pnice, int pinfo, char *name,
 		stackframe[PROCESS_STACK_IAR] = (uint32) start;
 		pcb->flags |= PROCESS_TYPE_USER;
 	} else {
+
+
 		// Set r31 to ProcessExit().  This will only be called for a system
 		// process; user processes do an exit() trap.
 		stackframe[PROCESS_STACK_IREG + 31] = (uint32) ProcessExit;
@@ -684,20 +715,28 @@ int ProcessFork(VoidFunc func, uint32 param, int pnice, int pinfo, char *name,
 				"FATAL ERROR: could not get link for forked PCB in ProcessFork!\n");
 		exitsim();
 	}
-	if (AQueueInsertLast(&runQueue, pcb->l) != QUEUE_SUCCESS) {
-		printf(
-				"FATAL ERROR: could not insert link into runQueue in ProcessFork!\n");
-		exitsim();
-	}
-	RestoreIntrs(intrs);
 
-	// If this is the first process, make it the current one
-	if (currentPCB == NULL) {
-		dbprintf('p', "Setting currentPCB=0x%x, stackframe=0x%x\n",
-				(int)pcb, (int)(pcb->currentSavedFrame));
-		currentPCB = pcb;
-	}
+	if (dstrncmp(name, "ProcessIdle", 11) == 0){
+		printf("ProcessFork: Made ProcessIdle()\n");
+		idle = pcb;
+		RestoreIntrs(intrs);
+	} else{
+		if (AQueueInsertLast(&runQueue, pcb->l) != QUEUE_SUCCESS) {
+			printf(
+					"FATAL ERROR: could not insert link into runQueue in ProcessFork!\n");
+			exitsim();
+		}
+		RestoreIntrs(intrs);
 
+		// If this is the first process, make it the current one
+		if (currentPCB == NULL) {
+			dbprintf('p', "Setting currentPCB=0x%x, stackframe=0x%x\n",
+					(int)pcb, (int)(pcb->currentSavedFrame));
+			printf("ProcessFork: switching in pid = %d\n", GetPidFromAddress(pcb));
+			currentPCB = pcb;
+		}
+	}
+	PrintRunQueue();
 	dbprintf('p', "Leaving ProcessFork (%s)\n", name);
 	// Return the process number (found by subtracting the PCB number
 	// from the base of the PCB array).
@@ -900,6 +939,7 @@ void main(int argc, char *argv[]) {
 	int numargs = 0;
 	char *params[10]; // Maximum number of command-line parameters is 10
 
+
 	debugstr[0] = '\0';
 
 	printf("Got %d arguments.\n", argc);
@@ -978,6 +1018,10 @@ void main(int argc, char *argv[]) {
 	FsSeek(i, 0, FS_SEEK_SET);
 	FsWrite(i, buf, 80);
 	FsClose(i);
+
+	//setup the idle process
+	ProcessFork(&ProcessIdle, (uint32)("idle"), 0, 0, "ProcessIdle", 0);
+
 	if (userprog != (char *) 0) {
 		numargs = 0;
 		for (i = 0; i < argc - base; i++) {
@@ -1026,8 +1070,8 @@ void main(int argc, char *argv[]) {
 					params[9], NULL);
 			break;
 		default:
-			dbprintf('i', "ERROR: number of argument (%d) is not valid!\n",
-					numargs);
+			dbprintf('i', "ERROR: number of argument (%d) is not valid!\n", numargs);
+			break;
 		}
 	} else {
 		dbprintf('i', "No user program passed!\n");
@@ -1081,6 +1125,7 @@ void process_create(char *name, ...) {
 	char allargs[1000];
 	args = &name;
 	k = 0;
+	printf("system process_create\n");
 	for (i = 0; args[i] != NULL; i++) {
 		j = 0;
 		do {
@@ -1102,7 +1147,6 @@ int GetPidFromAddress(PCB *pcb) {
 // followed by a call to ProcessSchedule (in traps.c).
 //--------------------------------------------------------
 void ProcessUserSleep(int seconds) {
-	printf("Process user sleep\n");
 	ProcessSetStatus(currentPCB, PROCESS_STATUS_SLEEPING);
 	ProcessSuspend(currentPCB);
 	currentPCB->sleep_start = ClkGetCurTime();
@@ -1122,6 +1166,25 @@ void ProcessUserSleep(int seconds) {
 //-----------------------------------------------------
 void ProcessYield() {
 	//Set yielding
-//	printf("ProcessYield()\n");
+	//	printf("ProcessYield()\n");
 	ProcessSetStatus(currentPCB, PROCESS_STATUS_YIELDING);
+}
+
+void ProcessIdle() {
+	while(1);
+}
+
+void PrintRunQueue(){
+	Link *l = NULL;
+	PCB * pcb = NULL;
+	if (!AQueueEmpty(&runQueue)) {
+		printf("run queue contents: ");
+			l = AQueueFirst(&runQueue);
+			while (l != NULL) {
+				pcb = AQueueObject(l);
+				printf("%d ", GetPidFromAddress(pcb));
+				l = AQueueNext(l);
+			}
+			printf("\n");
+		}
 }

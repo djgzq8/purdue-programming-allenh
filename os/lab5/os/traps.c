@@ -87,7 +87,7 @@ static void TrapProcessCreateHandler(uint32 *trapArgs, int sysmode) {
   char *userarg = NULL;         // Current pointer to user argument string
   int numargs = 0;              // Number of arguments passed on command line
 
-  dbprintf('p', "TrapProcessCreateHandler: function started\n");
+
   // Initialize allargs string to all NULL's for safety
   for(i=0;i<SIZE_ARG_BUFF; i++) {
     allargs[i] = '\0';
