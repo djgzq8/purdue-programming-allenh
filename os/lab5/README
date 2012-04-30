@@ -1,0 +1,15 @@
+from the lab5 directory, run make lottery to view the lottery results of each user program.
+
+run make reaction to see the reactions run with no other debugging outputs.
+
+Run make all to compile only the programs considered in our solution.
+
+In process.c, change the macro SCHEDULER to LT_SCHED to use the lottery scheduler, and RR_SCHED to use
+the original round robin scheduler.
+
+Note: For the reactions, since only 10 messages are allowed per mailbox and
+more O2 is created than used. Eventually the mailbox used for O2 will become full and 
+cause the programs to exit while others are waiting. If this happens, use smaller parameters. 
+It should tell you when it can't work, but just in case.
+
+Dan Sabo collaborated with us for the first part because he was having teammate issues. 

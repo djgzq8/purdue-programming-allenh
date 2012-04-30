@@ -7,7 +7,7 @@
 
 
 SRCS=spawn_rx3.c
-EXEC=spawn_rx3.dlx.obj
+EXEC=rx3.dlx.obj
 
 include ../Makerules
 

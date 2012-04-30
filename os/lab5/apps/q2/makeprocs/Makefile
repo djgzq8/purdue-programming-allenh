@@ -7,7 +7,7 @@
 
 
 SRCS=makeprocs.c
-EXEC=makeprocs.dlx.obj
+EXEC=mp.dlx.obj
 
 include ../Makerules
 

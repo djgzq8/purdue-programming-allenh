@@ -7,7 +7,7 @@
 
 
 SRCS=spawn_water.c
-EXEC=spawn_water.dlx.obj
+EXEC=h2o.dlx.obj
 
 include ../Makerules
 

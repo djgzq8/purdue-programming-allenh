@@ -150,7 +150,8 @@ void ProcessFreeResources(PCB *pcb) {
 	// Your code for closing any open mailbox connections
 	// that a dying process might have goes here.
 	//-----------------------------------------------------
-	MboxCloseAllByPid(GetCurrentPid());
+	//	printf("%d freeing resources\n", GetPidFromAddress(pcb));
+	MboxCloseAllByPid(GetPidFromAddress(pcb));
 
 
 	//ah
@@ -239,20 +240,17 @@ void ProcessSchedule() {
 	float lower = 0;
 	float higher = 0;
 	int sleeping = 0;
+	int printed = -1;
+	Link *l1 = NULL;
+	PCB * pcb1 = NULL;
+	int total_contestant_tickets = 0;
 
 	srandom(ClkGetCurJiffies());
 
 
 	dbprintf('p', "Now entering ProcessSchedule (cur=0x%x, %d ready)\n",
 			(int)currentPCB, AQueueLength (&runQueue));
-	PrintRunQueue();
-	//unyield a  yielding process
-	if (currentPCB->flags & PROCESS_STATUS_YIELDING){
-		ProcessSetStatus(currentPCB, PROCESS_STATUS_RUNNABLE);
-	} else if (currentPCB->flags & PROCESS_STATUS_SLEEPING){
-		//when there is nothing in the runQueue and
-		//the currentPCB is sleeping, switch in the IDLE process
-	}
+
 
 	//now always check the waitQueue
 	if (!AQueueEmpty(&waitQueue)) {
@@ -261,9 +259,16 @@ void ProcessSchedule() {
 			pcb = AQueueObject(l);
 			if (pcb->flags & PROCESS_STATUS_SLEEPING){
 				sleeping = 1;
+
+				if (
+
+						(ClkGetCurTime() - pcb->sleep_start) -
+						(float) ((int)(ClkGetCurTime() - pcb->sleep_start)) < 10/(float)CLOCK_DEFAULT_RESOLUTION){
+					dbprintf('5', "Process %d ", GetPidFromAddress(pcb));
+					dbprintf('5', "has been asleep for %d seconds\n", (int)(ClkGetCurTime() - pcb->sleep_start));
+				}
 				if ((int)(ClkGetCurTime() - pcb->sleep_start) >= pcb->sleep_time){
-					printf("waking up process %d ", GetPidFromAddress(pcb));
-					printf("after %d seconds\n", (int)(ClkGetCurTime() - pcb->sleep_start));
+					dbprintf('5', "\t\tNow waking up!!\n");
 					ProcessWakeup(pcb);
 				}
 			}
@@ -291,32 +296,78 @@ void ProcessSchedule() {
 		}
 		printf("No runnable processes - exiting!\n");
 		exitsim(); // NEVER RETURNS
-	}else if(AQueueEmpty(&runQueue) && sleeping == 1 && currentPCB != idle){
-		printf("ProcessSchedule: switching in ProcessIdle\n");
+	} else if(AQueueEmpty(&runQueue) && sleeping == 1){
+		//dbprintf('4', "ProcessSchedule: switching in ProcessIdle\n");
 		currentPCB = idle;
-	}else {
-		//		printf("Scheduler\n");
-		//	if (currentPCB->flags & PROCESS_STATUS_RUNNABLE){}
+	} else {
 
 		if (currentPCB != idle){//don't put the idle process on the run queue
+//			dbprintf('4', "Moving front to end\n");
 			AQueueMoveAfter(&runQueue, AQueueLast(&runQueue), AQueueFirst(&runQueue)); // Move front to end of queue
 		}
 		if (SCHEDULER == RR_SCHED){
 			pcb = (PCB *)AQueueObject(AQueueFirst(&runQueue));// run process at head of queue
 		}else if (SCHEDULER == LT_SCHED){
-			draw = (float)random()/4294967295u;;
 
-			l = AQueueFirst(&runQueue);
-			while (l != NULL) {
-				pcb = AQueueObject(l);
-				higher += pcb->pnice/(float)total_tickets;
-				if (draw >= lower && draw < higher){
-					printf("ProcessSchedule: switching in pid = %d\n", GetPidFromAddress(pcb));
-					break;
+			if (AQueueLength(&runQueue) == 1){
+				pcb = AQueueObject(AQueueFirst(&runQueue));
+
+			} else if(AQueueLength(&runQueue) < 1){
+				printf("\t\t************Shouldn't be running\n");
+			} else{
+
+				l1 = AQueueFirst(&runQueue);
+				while (l1 != NULL) {
+					pcb1 = AQueueObject(l1);
+					total_contestant_tickets += pcb1->pnice;
+					l1 = AQueueNext(l1);
 				}
-				lower = higher;
-				l = AQueueNext(l);
+
+
+
+				{
+					dbprintf('4', "\n----------------Lottery----------------\n");
+					PrintRunQueue();
+
+					dbprintf('4', "Lottery:\n\tTotal tickets = %d\n\tContestant tickets = %d\n\t", total_tickets,total_contestant_tickets);
+					for (i = 0; i < PROCESS_MAX_PROCS; i++){
+
+						if (!(pcbs[i].flags & PROCESS_STATUS_FREE)){
+							if (printed % 3 == 2 ){
+								dbprintf('4', "\n\t");
+							}
+							dbprintf('4', "(%d: %s - %d) ", GetPidFromAddress(&pcbs[i]),pcbs[i].name, pcbs[i].pnice);
+							printed++;
+						}
+					}
+					dbprintf('4', "\n");
+
+				}
+
+				draw = (float)random()/4294967295u;
+				l = AQueueFirst(&runQueue);
+				while (l != NULL) {
+					if ( !(((PCB *)AQueueObject(l))->flags & PROCESS_STATUS_YIELDING)){
+						pcb = AQueueObject(l);
+//						dbprintf('4', "pcb = %d\n", GetPidFromAddress(pcb));
+						higher += pcb->pnice/(float)total_contestant_tickets;
+						if (draw >= lower && draw < higher){
+							break;
+						}
+						lower = higher;
+					} else{
+//						dbprintf('4', "YIELD\n");
+						ProcessSetStatus(((PCB *)AQueueObject(l)), PROCESS_STATUS_RUNNABLE);
+					}
+					l = AQueueNext(l);
+				}
+				dbprintf('4', "\t%.2f < ", lower);
+				dbprintf('4', "%.2f ", draw);
+				dbprintf('4', "< %.2f \n", higher);
+				dbprintf('4', "\tSwitching to [%d] %s\n", GetPidFromAddress(pcb), pcb->name);
+				dbprintf('4', "--------------------------------------\n\n");
 			}
+
 		}else {
 			printf("ERROR: Must set SCHEDULER Macro in process.c\n");
 		}
@@ -364,19 +415,19 @@ void ProcessSchedule() {
 void ProcessSuspend(PCB *suspend) {
 	// Make sure it's already a runnable process.
 	dbprintf('p', "ProcessSuspend (%d): function started\n", GetCurrentPid());
-	PrintRunQueue();
+
 	//ProcessUserSleep does something special
 	if (!(suspend->flags & PROCESS_STATUS_SLEEPING)){
 		ASSERT(suspend->flags & PROCESS_STATUS_RUNNABLE,
 				"Trying to suspend a non-running process!\n");
 		ProcessSetStatus(suspend, PROCESS_STATUS_WAITING);
-		if (suspend->jiffies < CLOCK_PROCESS_JIFFIES && suspend->pnice > 1){
-			total_tickets -= 1;
-			suspend->pnice -= 1;
+		if (suspend->jiffies < CLOCK_PROCESS_JIFFIES && suspend->pnice < PROCESS_MAX_TICKETS){
+			total_tickets += 1;
+			suspend->pnice += 1;
 		}else{
-			if(suspend->pnice < PROCESS_MAX_TICKETS){
-				suspend->pnice += 1;
-				total_tickets += 1;
+			if(suspend->pnice > PROCESS_MIN_TICKETS){
+				suspend->pnice -= 1;
+				total_tickets -= 1;
 			}
 		}
 	}
@@ -525,12 +576,39 @@ int ProcessFork(VoidFunc func, uint32 param, int pnice, int pinfo, char *name,
 		printf("FATAL error: no free processes!\n");
 		exitsim(); // NEVER RETURNS!
 	}
-	pcb = (PCB *) AQueueObject(AQueueFirst(&freepcbs));
-	dbprintf('p', "Got a link @ 0x%x\n", (int)(pcb->l));
-	if (AQueueRemove(&(pcb->l)) != QUEUE_SUCCESS) {
-		printf(
-				"FATAL ERROR: could not remove link from freepcbsQueue in ProcessFork!\n");
-		exitsim();
+
+	//make sure that the idle process is separate
+	if (dstrncmp(name, "ProcessIdle", 11) == 0){
+		pcb = &idlePCB;
+	}else{
+		pcb = (PCB *) AQueueObject(AQueueFirst(&freepcbs));
+
+		dbprintf('p', "Got a link @ 0x%x\n", (int)(pcb->l));
+		if (AQueueRemove(&(pcb->l)) != QUEUE_SUCCESS) {
+			printf(
+					"FATAL ERROR: could not remove link from freepcbsQueue in ProcessFork!\n");
+			exitsim();
+		}
+		//set pnice
+		if (pnice < PROCESS_MIN_TICKETS){
+			pcb->pnice = 1;
+			total_tickets += 1;
+
+
+		}else if(pnice > PROCESS_MAX_TICKETS){
+			pcb->pnice = 19;
+			total_tickets += 19;
+
+		}
+		else{
+
+			pcb->pnice = pnice;
+			total_tickets += pnice;
+
+		}
+
+		pcb->pinfo = pinfo;
+
 	}
 	// This prevents someone else from grabbing this process
 	ProcessSetStatus(pcb, PROCESS_STATUS_RUNNABLE);
@@ -573,30 +651,12 @@ int ProcessFork(VoidFunc func, uint32 param, int pnice, int pinfo, char *name,
 	// to be set to the bottom of the interrupt stack frame, which is at the
 	// high end (address-wise) of the system stack.
 	stackframe = ((uint32 *) (pcb->sysStackArea + MEMORY_PAGE_SIZE))
-																																																									- (PROCESS_STACK_FRAME_SIZE + 8);
+																																																																																					- (PROCESS_STACK_FRAME_SIZE + 8);
 	// The system stack pointer is set to the base of the current interrupt
 	// stack frame.
 	pcb->sysStackPtr = stackframe;
 	// The current stack frame pointer is set to the same thing.
 	pcb->currentSavedFrame = stackframe;
-
-	//set pnice
-	if (pnice < PROCESS_MIN_TICKETS){
-		pcb->pnice = 1;
-		total_tickets += 1;
-
-
-	}else if(pnice > PROCESS_MAX_TICKETS){
-		pcb->pnice = 19;
-		total_tickets += 19;
-
-	}
-	else{
-		pcb->pnice = pnice;
-		total_tickets += pnice;
-
-	}
-
 
 	dbprintf('p',
 			"Setting up PCB @ 0x%x (sys stack=0x%x, mem=0x%x, size=0x%x)\n",
@@ -717,7 +777,7 @@ int ProcessFork(VoidFunc func, uint32 param, int pnice, int pinfo, char *name,
 	}
 
 	if (dstrncmp(name, "ProcessIdle", 11) == 0){
-		printf("ProcessFork: Made ProcessIdle()\n");
+		dbprintf('4', "ProcessFork: Made ProcessIdle()\n");
 		idle = pcb;
 		RestoreIntrs(intrs);
 	} else{
@@ -732,11 +792,11 @@ int ProcessFork(VoidFunc func, uint32 param, int pnice, int pinfo, char *name,
 		if (currentPCB == NULL) {
 			dbprintf('p', "Setting currentPCB=0x%x, stackframe=0x%x\n",
 					(int)pcb, (int)(pcb->currentSavedFrame));
-			printf("ProcessFork: switching in pid = %d\n", GetPidFromAddress(pcb));
+			dbprintf('4', "ProcessFork: switching in pid = %d\n", GetPidFromAddress(pcb));
 			currentPCB = pcb;
 		}
 	}
-	PrintRunQueue();
+
 	dbprintf('p', "Leaving ProcessFork (%s)\n", name);
 	// Return the process number (found by subtracting the PCB number
 	// from the base of the PCB array).
@@ -1125,7 +1185,7 @@ void process_create(char *name, ...) {
 	char allargs[1000];
 	args = &name;
 	k = 0;
-	printf("system process_create\n");
+	dbprintf('4', "system process_create\n");
 	for (i = 0; args[i] != NULL; i++) {
 		j = 0;
 		do {
@@ -1148,7 +1208,9 @@ int GetPidFromAddress(PCB *pcb) {
 //--------------------------------------------------------
 void ProcessUserSleep(int seconds) {
 	ProcessSetStatus(currentPCB, PROCESS_STATUS_SLEEPING);
+	dbprintf('5', "Putting process %d to sleep for %d seconds\n", GetPidFromAddress(currentPCB), seconds);
 	ProcessSuspend(currentPCB);
+
 	currentPCB->sleep_start = ClkGetCurTime();
 	currentPCB->sleep_time = seconds;
 
@@ -1178,13 +1240,13 @@ void PrintRunQueue(){
 	Link *l = NULL;
 	PCB * pcb = NULL;
 	if (!AQueueEmpty(&runQueue)) {
-		printf("run queue contents: ");
-			l = AQueueFirst(&runQueue);
-			while (l != NULL) {
-				pcb = AQueueObject(l);
-				printf("%d ", GetPidFromAddress(pcb));
-				l = AQueueNext(l);
-			}
-			printf("\n");
+		dbprintf('4', "Contestantants: ");
+		l = AQueueFirst(&runQueue);
+		while (l != NULL) {
+			pcb = AQueueObject(l);
+			dbprintf('4', "%d ", GetPidFromAddress(pcb));
+			l = AQueueNext(l);
 		}
+		dbprintf('4', "\n");
+	}
 }

@@ -7,7 +7,7 @@
 
 
 SRCS=spawn_sulfate.c
-EXEC=spawn_sulfate.dlx.obj
+EXEC=so4.dlx.obj
 
 include ../Makerules
 

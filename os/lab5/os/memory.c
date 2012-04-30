@@ -96,7 +96,7 @@ MemoryModuleInit ()
     nfreepages += 1;
     MemorySetFreemap (curpage, 1);
   }
-  dbprintf ('m', "Initialized %d free pages.\n", nfreepages);
+  printf ("Initialized %d free pages.\n", nfreepages);
 }
 
 //----------------------------------------------------------------------

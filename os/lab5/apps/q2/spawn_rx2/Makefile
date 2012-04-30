@@ -7,7 +7,7 @@
 
 
 SRCS=spawn_rx2.c
-EXEC=spawn_rx2.dlx.obj
+EXEC=rx2.dlx.obj
 
 include ../Makerules
 

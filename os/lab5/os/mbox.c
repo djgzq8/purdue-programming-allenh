@@ -4,10 +4,7 @@
 #include "synch.h"
 #include "queue.h"
 #include "mbox.h"
-typedef struct missile_code {
-  int numprocs;
-  char really_important_char;
-} missile_code;
+
 //-------------------------------------------------------
 //
 // void MboxModuleInit();
@@ -21,13 +18,26 @@ typedef struct missile_code {
 //
 //-------------------------------------------------------
 static mbox mbox_list[MBOX_NUM_MBOXES];
+//static char buffers[MBOX_NUM_BUFFERS][MBOX_MAX_MESSAGE_LENGTH];
 
 void MboxModuleInit() {
 	int i;
-
+	int j;
+	//	for (i = 0; i < MBOX_NUM_BUFFERS; i ++){
+	//		buffers[i][0] = '\0';
+	//	}
 	for (i = 0; i < MBOX_NUM_MBOXES; i++) {
 		mbox_list[i].handle = (mbox_t)i;
 		mbox_list[i].in_use = -1;
+	}
+
+	for (i = 0; i < MBOX_NUM_MBOXES; i++) {
+		for (j = 0; j < MBOX_NUM_BUFFERS; j++) {
+
+			mbox_list[i].users[j] = -1;  //modified (mbox_list[(int)handle].users[i] = 0)
+//			printf("%d  ", mbox_list[i].users[j]);
+		}
+//		printf("\n\n");
 	}
 	return;
 }
@@ -53,12 +63,12 @@ mbox_t MboxCreate() {
 			mbox_list[i].full = SemCreate(0);
 			mbox_list[i].lock = LockCreate();
 			for(j = 0; j < MBOX_NUM_BUFFERS; j++) {
-				mbox_list[i].users[j] = 0;
+				mbox_list[i].users[j] = -1;
 			}
 			return mbox_list[i].handle;
 		}
 	}
- 	return MBOX_FAIL;
+	return MBOX_FAIL;
 }
 
 //-------------------------------------------------------
@@ -84,12 +94,16 @@ int MboxOpen(mbox_t handle) {
 			return MBOX_FAIL;
 		}
 	}
-
+//	PrintUsersByHandle(handle);
 	if (handle >= 0 && handle < MBOX_NUM_MBOXES) {  //modified (MBOX_NUM_BOXES)
-		if (mbox_list[handle].in_use >= 0 &&
-		    mbox_list[handle].msg_count < MBOX_MAX_BUFFERS_PER_MBOX) {
+//		printf("handle = %d, in_use = %d, message count = %d\n",handle, mbox_list[handle].in_use, mbox_list[handle].msg_count);
+		if (mbox_list[handle].in_use >= 0 //&&
+//				mbox_list[handle].msg_count < MBOX_MAX_BUFFERS_PER_MBOX
+				) {
+//			printf("second if\n");
 			for (i = 0; i < MBOX_NUM_BUFFERS; i++) {
-				if (mbox_list[handle].users[i] == 0) {
+				if (mbox_list[handle].users[i] == -1) {
+//					printf("free users space");
 					mbox_list[handle].users[i] = GetCurrentPid();
 					mbox_list[handle].in_use++;
 					return MBOX_SUCCESS;
@@ -121,8 +135,9 @@ int MboxClose(mbox_t handle) {
 		if (mbox_list[(int)handle].in_use > 1) {
 			for (i = 0; i < MBOX_NUM_BUFFERS; i++) {
 				if (mbox_list[(int)handle].users[i] == pid) {
-					mbox_list[(int)handle].users[i] = 0;
+					mbox_list[(int)handle].users[i] = -1;
 					mbox_list[(int)handle].in_use--;
+//					printf("MboxClose: handle = %d in_use = %d", handle, mbox_list[(int)handle].in_use);
 				}
 			}
 			return MBOX_SUCCESS;
@@ -150,36 +165,36 @@ int MboxClose(mbox_t handle) {
 //
 //-------------------------------------------------------
 int MboxSend(mbox_t handle, int length, void* message) {
-	int i;
 
-	if(mbox_list[handle].msg_count >= MBOX_MAX_BUFFERS_PER_MBOX) {
-			SemHandleWait(mbox_list[handle].empty);
-	}
+
+//	if(mbox_list[handle].msg_count >= MBOX_MAX_BUFFERS_PER_MBOX) {
+		SemHandleWait(mbox_list[handle].empty);
+//	}
 	LockHandleAcquire(mbox_list[handle].lock);
 
 	bcopy(message,mbox_list[handle].msgs[mbox_list[handle].head].message,length);
-	dbprintf('m', "send %c\n",((missile_code *)mbox_list[handle].msgs[mbox_list[handle].head].message)->really_important_char);
+
 	mbox_list[handle].msgs[mbox_list[handle].head].length = length;
 	mbox_list[handle].head = (mbox_list[handle].head + 1) % MBOX_MAX_BUFFERS_PER_MBOX;
 	mbox_list[handle].msg_count++;
 
-//	printf("MBOX INFO: handle: %d\n head: %d\n tail: %d\n in_use: %d\n msg_count: %d\n ",mbox_list[handle].handle,
-//			mbox_list[handle].head,mbox_list[handle].tail,mbox_list[handle].in_use,mbox_list[handle].msg_count);
-//	printf("user_list: ");
-//	for(i = 0; i < MBOX_NUM_BUFFERS; i++) {
-//		printf("%d",mbox_list[handle].users[i]);
-//	}
-//	printf("\n\n msg info: \n");
-//	for(i = 0; i < MBOX_MAX_MESSAGE_LENGTH; i++) {
-//		printf("ID: %d, msg: %s, length: %d\n",mbox_list[handle].msgs[i].id,
-//		                                         mbox_list[handle].msgs[i].message,
-//		                                         mbox_list[handle].msgs[i].length);
-//	}
+	//	printf("MBOX INFO: handle: %d\n head: %d\n tail: %d\n in_use: %d\n msg_count: %d\n ",mbox_list[handle].handle,
+	//			mbox_list[handle].head,mbox_list[handle].tail,mbox_list[handle].in_use,mbox_list[handle].msg_count);
+	//	printf("user_list: ");
+	//	for(i = 0; i < MBOX_NUM_BUFFERS; i++) {
+	//		printf("%d",mbox_list[handle].users[i]);
+	//	}
+	//	printf("\n\n msg info: \n");
+	//	for(i = 0; i < MBOX_MAX_MESSAGE_LENGTH; i++) {
+	//		printf("ID: %d, msg: %s, length: %d\n",mbox_list[handle].msgs[i].id,
+	//		                                         mbox_list[handle].msgs[i].message,
+	//		                                         mbox_list[handle].msgs[i].length);
+	//	}
 	SemHandleSignal(mbox_list[handle].full);
 	LockHandleRelease(mbox_list[handle].lock);
 	return MBOX_SUCCESS;
-	
-  return MBOX_FAIL;
+
+	return MBOX_FAIL;
 }
 
 //-------------------------------------------------------
@@ -201,9 +216,9 @@ int MboxSend(mbox_t handle, int length, void* message) {
 int MboxRecv(mbox_t handle, int maxlength, void* message) {
 	int size;
 
-	if(mbox_list[handle].msg_count == 0) {
-			SemHandleWait(mbox_list[handle].full);
-	}
+//	if(mbox_list[handle].msg_count == 0) {
+		SemHandleWait(mbox_list[handle].full);
+//	}
 	LockHandleAcquire(mbox_list[handle].lock);
 
 	if (mbox_list[handle].msgs[mbox_list[handle].tail].length <= maxlength) {
@@ -213,7 +228,7 @@ int MboxRecv(mbox_t handle, int maxlength, void* message) {
 		return MBOX_FAIL;
 	}
 	bcopy(mbox_list[handle].msgs[mbox_list[handle].tail].message,message, size);
-	dbprintf('m', "recv %c\n",((missile_code *)mbox_list[handle].msgs[mbox_list[handle].tail].message)->really_important_char);
+
 	mbox_list[handle].tail = (mbox_list[handle].tail + 1) % MBOX_MAX_BUFFERS_PER_MBOX;
 	mbox_list[handle].msg_count--;
 
@@ -239,12 +254,24 @@ int MboxCloseAllByPid(int pid) {
 	int j;
 	for (i = 0; i < MBOX_NUM_MBOXES; i++) {
 		for (j = 0; j < MBOX_NUM_BUFFERS; j++) {
-				if (mbox_list[i].users[j] == pid) {       //modified (mbox_list[(int)handle].users[j] == pid)
-					mbox_list[i].users[i] = 0;  //modified (mbox_list[(int)handle].users[i] = 0)
-					mbox_list[i].in_use--;      //modified (mbox_list[(int)handle].in_use--)
-				}
+			if (mbox_list[i].users[j] == pid) {       //modified (mbox_list[(int)handle].users[j] == pid)
+				mbox_list[i].users[j] = -1;  //modified (mbox_list[(int)handle].users[i] = 0)
+				mbox_list[i].in_use--;      //modified (mbox_list[(int)handle].in_use--)
+//				printf("CloseAll[%d]: box = %d, in_use = %d\n",pid, i, mbox_list[i].in_use);
+			}
 		}
 	}
 	return MBOX_SUCCESS;
-       //return MBOX_FAIL;
+	//return MBOX_FAIL;
 }
+
+void PrintUsersByHandle(mbox_t handle){
+	int j;
+//	printf("\nUsers:\n");
+	for (j = 0; j < MBOX_NUM_BUFFERS; j++) {
+
+//		printf("%d  ,", mbox_list[handle].users[j]);
+	}
+//	printf("\n\n");
+}
+
