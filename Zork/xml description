@@ -1,0 +1,61 @@
+map
+	room[]
+	item[]
+	container[]
+	creature[]
+
+Triggers - contains: Order of execution - output any 'print' action first, then other 'action' commands in the order given in the file.
+	type, assumed to be 'single' (only used once) unless specified as 'permanent' (unlimited use).
+	command
+	condition  [1](one or more) including special conditions of type command (all of which need to be satisfied for the corresponding actions to take place), 
+		-owner
+			+ object
+			+ has
+			+ owner
+		-status
+			+ object
+			+ status
+		-command
+			+user command - recognized for the entire string (i.e. take sword).
+	
+	print, (one or more)
+	action (one or more)
+
+The trigger will pass the 'command' portion of of it's condition if there is no command element or if any one of the command element's contents are matched.
+Owner - will have object, has, and owner elements. 
+Status - will have object and status elements.
+Also, context is very important. Only triggers in the present context of the game should be checked. This includes the inventory, the present room, and any items, containers, creatures, and items in containers in the present room. The actions those triggers perform, however, can act on any object in the game.
+
+
+	name, 
+	status, 
+	description,
+Room - may contain: 
+	trigger[ ]. 
+		
+	type, (default is regular)
+	border[ ], 
+	container[ ], 
+	item[ ], 
+	creature[ ], 
+
+	Item - may contain:  
+		trigger[ ]. 
+	
+		writing, 
+		status, 
+		turn on, If item has turn on element and "turn on" command is issued by user, action elements in 'turn on' are to be executed if any given conditions are met.
+
+	
+	Container - may contain: 
+		trigger[ ]. 
+	
+		accept[ ], If an 'accept' element is added, only specific items may be put into the container and the container need not be opened to insert them (cannot be opened until one of those items is inserted, in fact).
+		item[ ], 
+
+	Creature - may contain: 
+		trigger[ ]. If "attack" command is issued by user with creature's vulnerability, action elements in 'attack' are to be executed if any given conditions are met.
+	
+		vulnerability[ ], 
+		attack, 
+	
