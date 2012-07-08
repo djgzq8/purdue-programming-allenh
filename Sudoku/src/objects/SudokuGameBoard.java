@@ -44,8 +44,7 @@ public class SudokuGameBoard {
 			{0, 0, 0, 7, 0, 0, 0, 5, 1}
 	};
 	
-	SudokuGameBoard(){
-
+	public SudokuGameBoard(){
 		for (int i = 0; i < 9; i++){
 			rows[i] = new SudokuRow(i);
 		}
@@ -60,7 +59,7 @@ public class SudokuGameBoard {
 
 		for (int i = 0; i < 9; i++){
 			for (int j = 0; j < 9; j++){
-				cells.add(new SudokuCell(rows[i], cols[j], cubes[i/3][j/3], test2[i][j]));
+				cells.add(new SudokuCell(rows[i], cols[j], cubes[i/3][j/3], test[i][j]));
 			}
 		}
 	}
@@ -71,6 +70,7 @@ public class SudokuGameBoard {
 		public MySet elim = new MySet();
 
 		SudokuRow(int num){
+			
 			this.rowNumber = num;
 			for (int i = 1; i <= 9; i++){
 				elim.add(new Integer(i));
