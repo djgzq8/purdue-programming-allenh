@@ -19,18 +19,7 @@ public class SudokuGameBoard {
 			{7, 0, 0, 0, 6, 0, 0, 8, 0}, 
 			{2, 0, 6, 0, 0, 0, 1, 0, 9}
 	};
-//	public int[][] test2
-//	= {
-//			{, , , , , , , , }, 
-//			{, , , , , , , , }, 
-//			{, , , , , , , , }, 
-//			{, , , , , , , , }, 
-//			{, , , , , , , , }, 
-//			{, , , , , , , , }, 
-//			{, , , , , , , , }, 
-//			{, , , , , , , , }, 
-//			{, , , , , , , , }
-//	};
+
 	public int[][] test2
 	= {
 			{3, 6, 0, 0, 0, 7, 0, 0, 0}, 
@@ -45,18 +34,32 @@ public class SudokuGameBoard {
 	};
 	
 	public SudokuGameBoard(){
+		//creates and initializes 9 rows
 		for (int i = 0; i < 9; i++){
 			rows[i] = new SudokuRow(i);
 		}
+		//creates and initializes 9 columns
 		for (int i = 0; i < 9; i++){
 			cols[i] = new SudokuCol(i);
 		}
+		//creates and initializes 9 subcubes
 		for (int i = 0; i < 3; i++){
 			for (int j = 0; j < 3; j++){
 				cubes[i][j] = new SudokuCube(i, j);
 			}
 		}
-
+		ArrayList<Integer> a = new ArrayList<Integer>();
+		a.add(1);
+		a.add(1);
+		System.out.println(a);
+		ArrayList<Integer> b = new ArrayList<Integer>(new HashSet<Integer>(a));
+		System.out.println(b);
+	
+		//cells is sort of a master location for the cells
+		//this double loop creates all of the cells with the test values and adds them to
+		//the cell array
+		//TODO: This is bad because the idea should be to make it possible to add the stuff
+		//later... or something
 		for (int i = 0; i < 9; i++){
 			for (int j = 0; j < 9; j++){
 				cells.add(new SudokuCell(rows[i], cols[j], cubes[i/3][j/3], test[i][j]));
@@ -210,11 +213,12 @@ public class SudokuGameBoard {
 		}
 	}
 
+	@SuppressWarnings("serial")
 	public class MySet extends TreeSet<Integer> {
 		/**
 		 * 
 		 */
-		private static final long	serialVersionUID	= 7796630520488069051L;
+		//private static final long	serialVersionUID	= 7796630520488069051L;
 
 		MySet(){
 
