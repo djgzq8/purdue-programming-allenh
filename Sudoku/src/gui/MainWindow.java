@@ -1,27 +1,24 @@
 package gui;
 
-import java.awt.EventQueue;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JMenuBar;
-import javax.swing.JMenu;
-import javax.swing.JMenuItem;
-import javax.swing.JScrollPane;
-import javax.swing.UIManager;
+import threadmanager.ThreadService;
+import objects.SudokuGameBoard;
 
+import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
+import javax.swing.*;
+import javax.swing.border.*;
+
+
+import java.io.BufferedReader;
 import java.io.File;
-import javax.swing.JTextArea;
-import java.awt.Dimension;
-import java.awt.Insets;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 
-import javax.swing.border.BevelBorder;
+import java.util.concurrent.*;
 
-import objects.SudokuGameBoard;
-import java.awt.GridLayout;
-import javax.swing.JTextField;
-
+@SuppressWarnings("serial")
 public class MainWindow extends JFrame implements ActionListener{
 	static private final String newline = "\n";
 	JMenuItem mntmOpen;
@@ -30,19 +27,24 @@ public class MainWindow extends JFrame implements ActionListener{
 	private JTextArea log;
 	static SudokuGameBoard game1;
 	private JTextField textField;
+	private JButton solveButton;
 	/**
 	 * Launch the application.
 	 */
+	//	public static ThreadService Threads =  (ThreadService) Executors.newFixedThreadPool(5);
+
 
 	public static void main(String[] args) {
 		game1 = new SudokuGameBoard();
+		game1.start();
 		//game1.create(input);
 		//game1.solve();
+		
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				UIManager.put("swing.boldMetal", Boolean.FALSE);
-				
-				
+
+
 				try {
 					MainWindow window = new MainWindow();
 					window.setTitle("Sudoku Solver");
@@ -61,19 +63,27 @@ public class MainWindow extends JFrame implements ActionListener{
 	 * Create the application.
 	 */
 	public MainWindow() {
+		
 		setMinimumSize(new Dimension(400, 400));
 		getContentPane().setMinimumSize(new Dimension(400, 400));
 		setFocusTraversalKeysEnabled(false);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-//		super(new BorderLayout());
+		//		super(new BorderLayout());
 		initialize();
 	}
 
+	
+	public void paint(Graphics g){
+//	java.awt.color
+		Graphics2D g2 = (Graphics2D)g;
+		
+	}
 	/**
 	 * Initialize the contents of the frame.
 	 */
 	private void initialize() {
 		fc = new JFileChooser();
+		
 		JMenuBar menuBar = new JMenuBar();
 		this.setJMenuBar(menuBar);
 
@@ -84,7 +94,7 @@ public class MainWindow extends JFrame implements ActionListener{
 		mntmOpen.addActionListener(this);
 		mnFile.add(mntmOpen);
 		getContentPane().setLayout(new GridLayout(9, 9, 0, 0));
-//		frmSudokuSolver.getContentPane().setLayout(new BorderLayout(0, 0));
+		//		frmSudokuSolver.getContentPane().setLayout(new BorderLayout(0, 0));
 
 		log = new JTextArea();
 		log.setBorder(new BevelBorder(BevelBorder.RAISED, null, null, null, null));
@@ -96,29 +106,53 @@ public class MainWindow extends JFrame implements ActionListener{
 		log.setEditable(false);
 		JScrollPane logScrollPane = new JScrollPane(log);
 		getContentPane().add(logScrollPane);
-		
-		textField = new JTextField();
-		textField.setText("1");
+
+		(textField = new JTextField()).setText("1");
+		//		textField.setText("1");
 		getContentPane().add(textField);
 		textField.setColumns(10);
-//		frmSudokuSolver.getContentPane().add(log);
+
+		solveButton = new JButton("Solve!");
+		solveButton.addActionListener(this) ;
+		getContentPane().add(solveButton);
+		//		frmSudokuSolver.getContentPane().add(log);
 	}
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		if (e.getSource() == mntmOpen){
+			BufferedReader TextReader = null;
 			System.out.println("Open Button Was Pressed");
+			fc.setCurrentDirectory(new File("."));
+			
 			int returnVal = fc.showOpenDialog(MainWindow.this);
-
+			 
 			if (returnVal == JFileChooser.APPROVE_OPTION) {
-				File file = fc.getSelectedFile();
-				//This is where a real application would open the file.
-				log.append("Opening: " + file.getName() + "." + newline);
-				game1.print();
-			} else {
+				try {
+					TextReader = new BufferedReader(new FileReader(fc.getSelectedFile()));
+					game1.initialize(TextReader);
+				} catch (FileNotFoundException e1) {
+					System.err.println("File " + fc.getSelectedFile().getName() + " does not exist");
+					e1.printStackTrace();
+				} 
+
+
+				log.append("Opening: " + fc.getSelectedFile().getName() + "." + newline);
+				//TODO: Figure out how people typically rely on a thread to do their bidding
+				//without continually starting it??
+			} else if (returnVal == JFileChooser.CANCEL_OPTION){
+				System.exit(-2);
+			}
+			else {
 				log.append("Open command cancelled by user." + newline);
 			}
 			log.setCaretPosition(log.getDocument().getLength());
+		}
+		else if (e.getSource() == solveButton){
+			synchronized (game1) {
+				game1.notify();
+			}
+			System.out.println("Solve Button was pressed");
 		}
 	}
 
