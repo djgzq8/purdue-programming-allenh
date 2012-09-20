@@ -1,7 +1,13 @@
 package objects;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.*;
 
-public class SudokuGameBoard {
+import javax.swing.JFileChooser;
+
+public class SudokuGameBoard extends Thread {
 	private ArrayList<SudokuCell> cells = new ArrayList<SudokuCell>();
 	private SudokuRow[] rows = new SudokuRow[9];
 	private SudokuCol[] cols = new SudokuCol[9];
@@ -32,7 +38,23 @@ public class SudokuGameBoard {
 			{6, 0, 0, 0, 8, 3, 9, 0, 0}, 
 			{0, 0, 0, 7, 0, 0, 0, 5, 1}
 	};
-	
+
+	public void run(){
+		System.out.println(this.getState());
+		for (;;){
+			try {
+				synchronized (this){
+					wait();
+
+				}
+				this.solve();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
 	public SudokuGameBoard(){
 		//creates and initializes 9 rows
 		for (int i = 0; i < 9; i++){
@@ -54,17 +76,8 @@ public class SudokuGameBoard {
 		System.out.println(a);
 		ArrayList<Integer> b = new ArrayList<Integer>(new HashSet<Integer>(a));
 		System.out.println(b);
-	
-		//cells is sort of a master location for the cells
-		//this double loop creates all of the cells with the test values and adds them to
-		//the cell array
-		//TODO: This is bad because the idea should be to make it possible to add the stuff
-		//later... or something
-		for (int i = 0; i < 9; i++){
-			for (int j = 0; j < 9; j++){
-				cells.add(new SudokuCell(rows[i], cols[j], cubes[i/3][j/3], test[i][j]));
-			}
-		}
+
+
 	}
 
 	public class SudokuRow{
@@ -73,7 +86,7 @@ public class SudokuGameBoard {
 		public MySet elim = new MySet();
 
 		SudokuRow(int num){
-			
+
 			this.rowNumber = num;
 			for (int i = 1; i <= 9; i++){
 				elim.add(new Integer(i));
@@ -243,7 +256,7 @@ public class SudokuGameBoard {
 		}
 	}
 
-	public void print(){
+	public void solve(){
 
 
 		for (int i = 0; i < 9; i++){
@@ -251,14 +264,8 @@ public class SudokuGameBoard {
 			}
 		}
 		for (int k = 0; k < 10; k++){
+			this.print();
 			
-			for (int i = 0; i < 9; i++){
-				for (int j = 0; j < 9; j++){
-					System.out.print(rows[i].cells.get(j).cellValue + " ");
-				}
-				System.out.println();
-			}
-			System.out.println();
 			try {
 				Thread.sleep(500);
 			}
@@ -272,17 +279,17 @@ public class SudokuGameBoard {
 					if (rows[i].get(j).cellValue == 0){
 						MySet sol = cubes[i/3][j/3].elim.intersection(rows[i].elim.intersection(cols[j].elim));
 						if (sol.size() == 1){
-//							System.out.print("Sol["+(i+1)+","+(j+1)+"]:");
-//							System.out.print(" " + sol + " ");
+							//							System.out.print("Sol["+(i+1)+","+(j+1)+"]:");
+							//							System.out.print(" " + sol + " ");
 							rows[i].setValue(j,sol.first().intValue());
-							
+
 						}
 
 					}else {
 						//					System.out.print(" <"+rows[i].get(j).cellValue+"> ");
 					}
 				}
-//				System.out.println();
+				//				System.out.println();
 			}
 		}
 
@@ -311,6 +318,65 @@ public class SudokuGameBoard {
 		//		}
 	}
 
+	public void print(){
+		for (int i = 0; i < 9; i++){
+			for (int j = 0; j < 9; j++){
+				System.out.print(rows[i].cells.get(j).cellValue + " ");
+			}
+			System.out.println();
+		}
+		System.out.println();
+	}
+
+	public void initialize(BufferedReader TextReader){
+		String[] row;// = new String[10]; 
+		String line;
+		try {
+			int i = 0;
+			while((line = TextReader.readLine()) != null){
+				row = line.split("\\s");
+				for (int j = 0; j<row.length; j++){
+//					System.out.print(row[j].trim());
+					cells.add(new SudokuCell(rows[i], cols[j], cubes[i/3][j/3], Integer.valueOf(row[j].trim()) )  );
+				}
+				System.out.println();
+				i++;
+			}
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		this.print();
+
+
+		//				java.util.regex.Pattern re = java.util.regex.Pattern.compile("");
+		//				java.util.regex.Matcher matcher = 
+		//			            re.matcher();
+
+		//				boolean found = false;
+		//	            while (matcher.find()) {
+		////	                console.format("I found the text" +
+		//	                    " \"%s\" starting at " +
+		//	                    "index %d and ending at index %d.%n",
+		//	                    matcher.group(),
+		//	                    matcher.start(),
+		//	                    matcher.end());
+		//	                found = true;
+		//	            }
+
+
+		//cells is sort of a master location for the cells
+		//this double loop creates all of the cells with the test values and adds them to
+		//the cell array
+		//TODO: This is bad because the idea should be to make it possible to add the stuff
+		//later... or something
+//		for (int i = 0; i < 9; i++){
+//			for (int j = 0; j < 9; j++){
+//				cells.add(new SudokuCell(rows[i], cols[j], cubes[i/3][j/3], test[i][j]));
+//			}
+//		}
+
+	}
 }
 
 
